@@ -6,26 +6,9 @@ from loguru import logger
 from gspread import Worksheet
 from adapter import FPLAdapter,GoogleSheet
 from config import Config
+from models import PlayerResultData
+from .message import MessageService
 
-
-class PlayerData:
-    def __init__(self,name:str,player_id:int,score:float):
-        self.name:str = name
-        self.player_id:int = player_id
-        self.score:float = score
-        self.reward_division:int = 1
-        self.shared_reward_player_ids:List[int] = []
-        self.reward:int = 0
-        self.sheet_row:int = -1
-        self.captain_points:int = 0
-        self.vice_captain_points:int = 0
-        
-        
-    def set_score(self,score:float):
-        self.score = score
-    
-    def set_reward_division(self,division:int):
-        self.reward_division = division
         
 def add_noise(value, noise_factor=0.0000000099):
     noise = random.uniform(0, noise_factor)
@@ -37,7 +20,7 @@ def is_equal(a:float,b:float,precision=6):
     threshold = 10 ** -precision
     return difference < threshold
 
-def expand_check_dupl_score(players:List[PlayerData]):
+def expand_check_dupl_score(players:List[PlayerResultData]):
     player_scores = [p.score for p in players]
     for i,p in enumerate(players):
         for j,score in enumerate(player_scores):
@@ -50,7 +33,7 @@ def expand_check_dupl_score(players:List[PlayerData]):
     return players
 
 def _update_players_reward_from_sheet(
-    players:List[PlayerData],
+    players:List[PlayerResultData],
     worksheet:Worksheet,
     start_score_row:int,
     current_reward_col:int,
@@ -68,11 +51,11 @@ def _update_players_reward_from_sheet(
                 break
 
 def _update_players_shared_reward(
-    players:List[PlayerData],
+    players:List[PlayerResultData],
     worksheet:Worksheet,
     current_reward_col:int
 ):
-    players_with_shared_reward:List[PlayerData] = [player for player in players if player.reward_division > 1]
+    players_with_shared_reward:List[PlayerResultData] = [player for player in players if player.reward_division > 1]
     for player in players_with_shared_reward:
         sum_reward_amount = player.reward
         for _player in players:
@@ -82,7 +65,7 @@ def _update_players_shared_reward(
         worksheet.update_cell(player.sheet_row,current_reward_col,new_reward)
 
 def _update_player_score_in_sheet(
-    players:List[PlayerData],
+    players:List[PlayerResultData],
     worksheet:Worksheet,
     start_score_row:int,
     current_score_col:int,
@@ -106,10 +89,10 @@ class Service:
 
         h2h_result = fpl_adapter.get_h2h_results(game_week=gw)
 
-        player_score:Dict[int, PlayerData] = {}
+        player_score:Dict[int, PlayerResultData] = {}
         results = h2h_result.results
 
-        players:List[PlayerData] = []
+        players:List[PlayerResultData] = []
         for result in results: 
             # player 1
             p1_name = result.entry_1_name
@@ -121,9 +104,9 @@ class Service:
             p2_id = result.entry_2_entry
             
             if p1_name not in config.ignore_players:
-                player_score[p1_id] = PlayerData(p1_name,p1_id,p1_score)
+                player_score[p1_id] = PlayerResultData(p1_name,p1_id,p1_score)
             if p2_name not in config.ignore_players:
-                player_score[p2_id] = PlayerData(p2_name,p2_id,p2_score)
+                player_score[p2_id] = PlayerResultData(p2_name,p2_id,p2_score)
 
         for player_id in tqdm(player_score, total=len(player_score), desc="Processing", unit="item",file=sys.stdout):
             player_team = fpl_adapter.get_player_team_by_id(player_id,game_week=gw)
@@ -138,7 +121,7 @@ class Service:
                     player_score[player_id].vice_captain_points = c.total_points * pick.multiplier
             player = player_score[player_id]
             players.append(player)
-        # Sorting the list of PlayerData instances by the 'score' attribute
+        # Sorting the list of PlayerResultData instances by the 'score' attribute
         players = sorted(players, key=lambda player: player.score, reverse=True)
         players = expand_check_dupl_score(players=players)
         for rank,player in enumerate(players,start=0):
@@ -162,3 +145,5 @@ class Service:
         # update player's shared reward (duplicated)
         _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
         
+        message_service = MessageService(config=config)
+        message_service.send_gameweek_result_message(players=players,game_week=gw)

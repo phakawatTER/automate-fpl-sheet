@@ -5,6 +5,7 @@ from linebot.models import MessageEvent, TextMessage,TextSendMessage,FollowEvent
 from linebot.exceptions import InvalidSignatureError
 from loguru import logger
 from config.config import Config
+from .bot import LineBot
 
 
 class LineMessageAPI:
@@ -17,6 +18,7 @@ class LineMessageAPI:
         line_bot_api = LineBotApi(config.line_channel_access_token)
         handler = WebhookHandler(config.line_channel_secret)
         app = Flask(__name__)
+        line_bot = LineBot(config=config)
 
         @app.route("/callback", methods=['POST'])
         def callback():
@@ -47,4 +49,3 @@ class LineMessageAPI:
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply_text))
         
         return app
-

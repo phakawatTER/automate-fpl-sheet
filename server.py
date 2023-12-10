@@ -1,5 +1,5 @@
 from config import Config
-from line_bot import LineMessageAPI
+from line import LineMessageAPI
 
 if __name__ == "__main__":
     config = Config.initialize("./config.json")

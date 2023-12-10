@@ -5,6 +5,8 @@ from .fpl_type import FantasyTeam,\
     PlayerData,PlayerHistory,\
     PlayerSeasonHistory
 
+from .model import PlayerData as PlayerResultData
+
 __all__ = [
     "FantasyTeam",
     "EntryHistory",
@@ -14,5 +16,6 @@ __all__ = [
     "Pick",
     "PlayerData",
     "PlayerHistory",
-    "PlayerSeasonHistory"
+    "PlayerSeasonHistory",
+    "PlayerResultData"
 ]
