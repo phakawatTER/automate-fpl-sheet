@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
 import requests as r
-from fpl_type import H2HResponse,FantasyTeam,PlayerData,PlayerHistory
+from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory
 
 class FPLError(Exception):
     def __init__(self,message:str):
