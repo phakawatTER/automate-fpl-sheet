@@ -18,6 +18,7 @@ class Config:
         self.cookies:str = config_data.get("cookies")
         self.player_ids_range:str = config_data.get("player_ids_range")
         self.ignore_players:List[str] = config_data.get("ignore_players")
+        self.sheet_url:str = config_data.get("sheet_url")
             
     @staticmethod
     def initialize(path_to_config:str):
@@ -162,7 +163,7 @@ def update_fpl_table(gw:int,config:Config):
         logger.info(f"({rank+1}){player.name}: {player.score} {player.captain_points} {player.vice_captain_points}")
 
     sheet = GoogleSheet("./service_account.json")
-    sheet = sheet.open_sheet_by_url("https://docs.google.com/spreadsheets/d/1eciOdiGItEkml98jVLyXysGMtpMa06hbiTTJ40lztw4")
+    sheet = sheet.open_sheet_by_url(config.sheet_url)
     worksheet = sheet.open_worksheet_from_default_sheet("Sheet3")
     # E4
     start_score_col = 5

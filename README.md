@@ -15,10 +15,11 @@ This mini project is used for automate filling out the points for certain FPL le
 first of all let's create a config file named "config.json"
 
 `{
-        cookies: "<cookies-from-fpl>",
-        league_id: "<your-league-id>",
-        player_ids_range: [1,2,3,4],
-        ignore_players: ["AVERAGE", "SOMEONE"]
+        "cookies": "<cookies-from-fpl>",
+        "league_id": "<your-league-id>",
+        "sheet_url": "https://sheet.url.com",
+        "player_ids_range": [1,2,3,4],
+        "ignore_players": ["AVERAGE", "SOMEONE"]
 }`
 
 - cookies - you can retrieve this from FPL website by copying the value from api request's headers
