@@ -1,16 +1,35 @@
 import sys
 import random
+import json
 from typing import Dict,List
 from tqdm import tqdm
 from loguru import logger
 from gspread import Worksheet
-
 from fpl_adapter import FPLAdapter
 from sheet import GoogleSheet
 
-LEAGUE_ID = 1592442
-IGNORE_PLAYERS = ["AVERAGE","TON"]
-PLAYER_IDS_RANGE = "A4:A11"
+
+
+class Config:
+    def __init__(self,path_to_config:str):
+        with open(path_to_config,"r",encoding="utf8") as file:
+            config_data:dict = json.load(file)
+        self.league_id:int = config_data.get("league_id")
+        self.cookies:str = config_data.get("cookies")
+        self.player_ids_range:str = config_data.get("player_ids_range")
+        self.ignore_players:List[str] = config_data.get("ignore_players")
+            
+    @staticmethod
+    def initialize(path_to_config:str):
+        return Config(path_to_config)
+    
+    def get_config(self):
+        return {
+            "league_id": self.league_id,
+            "cookies": self.cookies,
+            "player_ids_range": self.player_ids_range,
+            "ignore_players": self.ignore_players
+        }
 
 class PlayerData:
     def __init__(self,name:str,player_id:int,score:float):
@@ -35,7 +54,6 @@ def add_noise(value, noise_factor=0.0000000099):
     noise = random.uniform(0, noise_factor)
     noisy_value = value + noise
     return noisy_value
-        
 def is_equal(a:float,b:float,precision=6):
     difference = abs(a - b)
     threshold = 10 ** -precision
@@ -57,9 +75,10 @@ def _update_players_reward_from_sheet(
     players:List[PlayerData],
     worksheet:Worksheet,
     start_score_row:int,
-    current_reward_col:int
+    current_reward_col:int,
+    config:Config,
 ):
-    player_ids = [t[0] for t in  worksheet.get(PLAYER_IDS_RANGE)]
+    player_ids = [t[0] for t in  worksheet.get(config.player_ids_range)]
     # update reward of each players
     for i,player_id in enumerate(player_ids):
         for player in players:
@@ -88,9 +107,10 @@ def _update_player_score_in_sheet(
     players:List[PlayerData],
     worksheet:Worksheet,
     start_score_row:int,
-    current_score_col:int
+    current_score_col:int,
+    config:Config,
 ):
-    player_ids = [t[0] for t in  worksheet.get(PLAYER_IDS_RANGE)]
+    player_ids = [t[0] for t in  worksheet.get(config.player_ids_range)]
     for i, player_id in enumerate(player_ids):
         for player in players:
             if player.player_id == int(player_id):
@@ -98,9 +118,8 @@ def _update_player_score_in_sheet(
                 worksheet.update_cell(current_score_row,current_score_col, player.score)
                 break
         
-def update_fpl_table(gw:int,cookies:str):
-
-    fpl_adapter = FPLAdapter(league_id=LEAGUE_ID,cookies=cookies)
+def update_fpl_table(gw:int,config:Config):
+    fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
 
     h2h_result = fpl_adapter.get_h2h_results(game_week=gw)
 
@@ -118,9 +137,9 @@ def update_fpl_table(gw:int,cookies:str):
         p2_score = add_noise(result.entry_2_points)
         p2_id = result.entry_2_entry
         
-        if p1_name not in IGNORE_PLAYERS:
+        if p1_name not in config.ignore_players:
             player_score[p1_id] = PlayerData(p1_name,p1_id,p1_score)
-        if p2_name not in IGNORE_PLAYERS:
+        if p2_name not in config.ignore_players:
             player_score[p2_id] = PlayerData(p2_name,p2_id,p2_score)
 
     for player_id in tqdm(player_score, total=len(player_score), desc="Processing", unit="item",file=sys.stdout):
@@ -154,9 +173,9 @@ def update_fpl_table(gw:int,cookies:str):
 
     
     # update score in sheet
-    _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=start_score_row,players=players,worksheet=worksheet)
+    _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=start_score_row,players=players,worksheet=worksheet,config=config)
     # update players's reward from sheet                
-    _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=start_score_row)
+    _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=start_score_row,config=config)
     # update player's shared reward (duplicated)
     _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
         

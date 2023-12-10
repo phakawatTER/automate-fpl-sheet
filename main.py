@@ -25,10 +25,10 @@ def main():
 
     logger.info(f"processing gameweek {gameweek}")
     
-    
-    with open("./cookies.txt","r",encoding="utf8") as file:
-        cookies = file.read()
-        fpl_service.update_fpl_table(gameweek,cookies)  
+    # initialize config
+    config = fpl_service.Config.initialize("./config.json")
+    # update FPL table
+    fpl_service.update_fpl_table(gameweek,config=config)
     
 
 if __name__ == "__main__":
