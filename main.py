@@ -32,8 +32,4 @@ def main():
     
 
 if __name__ == "__main__":
-    # for i in range(38):
-    #     with open("./cookies.txt","r",encoding="utf8") as file:
-    #         cookies = file.read()
-    #         fpl_service.update_fpl_table(i+1,cookies) 
     main()
