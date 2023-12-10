@@ -14,15 +14,15 @@ PLAYER_IDS_RANGE = "A4:A11"
 
 class PlayerData:
     def __init__(self,name:str,player_id:int,score:float):
-        self.name = name
-        self.player_id = player_id
-        self.score = score
+        self.name:str = name
+        self.player_id:int = player_id
+        self.score:float = score
         self.reward_division:int = 1
-        self.shared_reward_player_ids = []
-        self.reward = 0
-        self.sheet_row = -1
-        self.captain_points = 0
-        self.vice_captain_points = 0
+        self.shared_reward_player_ids:List[int] = []
+        self.reward:int = 0
+        self.sheet_row:int = -1
+        self.captain_points:int = 0
+        self.vice_captain_points:int = 0
         
         
     def set_score(self,score:float):
@@ -128,12 +128,12 @@ def update_fpl_table(gw:int,cookies:str):
         for pick in player_team.picks:
             if pick.is_captain:
                 c = fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
-                player_score[player_id].score += c.total_points / 10000
-                player_score[player_id].captain_points = c.total_points
+                player_score[player_id].score += c.total_points / 10000 * pick.multiplier
+                player_score[player_id].captain_points = c.total_points * pick.multiplier
             if pick.is_vice_captain:
                 c = fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
-                player_score[player_id].score += c.total_points / 1000000
-                player_score[player_id].vice_captain_points = c.total_points
+                player_score[player_id].score += c.total_points / 1000000 * pick.multiplier
+                player_score[player_id].vice_captain_points = c.total_points * pick.multiplier
         player = player_score[player_id]
         players.append(player)
     # Sorting the list of PlayerData instances by the 'score' attribute
@@ -143,7 +143,7 @@ def update_fpl_table(gw:int,cookies:str):
         logger.info(f"({rank+1}){player.name}: {player.score} {player.captain_points} {player.vice_captain_points}")
 
     sheet = GoogleSheet("./service_account.json")
-    sheet = sheet.open_sheet_by_url("https://docs.google.com/spreadsheets/d/1eciOdiGItEkml98jVLyXysGMtpMa06hbiTTJ40lztw4/edit#gid=1315457538")
+    sheet = sheet.open_sheet_by_url("https://docs.google.com/spreadsheets/d/1eciOdiGItEkml98jVLyXysGMtpMa06hbiTTJ40lztw4")
     worksheet = sheet.open_worksheet_from_default_sheet("Sheet3")
     # E4
     start_score_col = 5
