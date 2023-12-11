@@ -6,14 +6,12 @@ from gspread import Worksheet
 from adapter import FPLAdapter,GoogleSheet
 from config import Config
 from models import PlayerResultData,PlayerRevenue
-from loguru import logger
 
 
 # F4
 START_SCORE_COL = 6
 START_SCORE_ROW = 4
 
-        
 def add_noise(value, noise_factor=0.0000000099):
     noise = random.uniform(0, noise_factor)
     noisy_value = value + noise

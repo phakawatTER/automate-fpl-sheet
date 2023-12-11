@@ -33,8 +33,8 @@ def main():
     # update FPL table
     players = FPLService.update_fpl_table(gameweek,config=config)
 
-    # message_service = MessageService(config=config)
-    # message_service.send_gameweek_result_message(players=players,game_week=gameweek)
+    message_service = MessageService(config=config)
+    message_service.send_gameweek_result_message(players=players,game_week=gameweek)
     
 
 if __name__ == "__main__":
