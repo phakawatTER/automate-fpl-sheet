@@ -1,5 +1,6 @@
 import sys
 import os
+import awsgi
 from boto3.session import Session
 
 root_directory = os.path.dirname(os.path.abspath(__file__))
@@ -18,9 +19,7 @@ def handler(event,context):
     s3_downloader.download_file_from_default_bucket("config.json")
     s3_downloader.download_file_from_default_bucket("service_account.json")
     config = Config("/tmp/config.json")
-    print("ok")
-    return config.__dict__
-    # app = LineMessageAPI(config=config).initialize()
-    # app.run(port=5100)
+    app = LineMessageAPI(config=config).initialize()
+    return awsgi.response(app,event,context)
 
 

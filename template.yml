@@ -3,6 +3,64 @@ Transform:
   - AWS::Serverless-2016-10-31
 Description: "FPL Line Message App"
 
+Globals:
+  Api:
+    # https://github.com/awslabs/serverless-application-model/blob/master/examples/2016-10-31/implicit_api_settings/template.yaml
+    # Logging, Metrics, Throttling, and all other Stage settings
+    MethodSettings: [
+        {
+          # Enable Metrics
+          "MetricsEnabled": false,
+
+          # On all Paths & methods
+          "ResourcePath": "/*",
+          "HttpMethod": "*",
+        },
+      ]
+    BinaryMediaTypes: ["image/*", "text/*", "font/*", "multipart/form-data"]
+    MinimumCompressionSize: 1024
+    GatewayResponses:
+      INTEGRATION_FAILURE:
+        StatusCode: 429 # For a handle on the client when the request is over the limit
+        ResponseTemplates:
+          "application/json": '{ "message": "INTEGRATION_FAILURE" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+            Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
+      INTEGRATION_TIMEOUT:
+        StatusCode: 408
+        ResponseTemplates:
+          "application/json": '{ "message": "INTEGRATION_TIMEOUT" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+            Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
+      REQUEST_TOO_LARGE:
+        StatusCode: 413
+        ResponseTemplates:
+          "application/json": '{ "message": "REQUEST_TOO_LARGE" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+            Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
+      THROTTLED:
+        StatusCode: 429
+        ResponseTemplates:
+          "application/json": '{ "message": "THROTTLED" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+            Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
+      QUOTA_EXCEEDED:
+        StatusCode: 400
+        ResponseTemplates:
+          "application/json": '{ "message": "QUOTA_EXCEEDED" }'
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+            Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
+
 Resources:
   FPLLLineMessageAPILayer:
     Type: "AWS::Serverless::LayerVersion"
@@ -27,6 +85,12 @@ Resources:
       Runtime: python3.9
       Timeout: 300
       MemorySize: 512
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: Any
 
   FPLPolicy:
     Type: "AWS::IAM::Role"
