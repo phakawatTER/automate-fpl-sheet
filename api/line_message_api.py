@@ -65,10 +65,10 @@ class LineMessageAPI:
                     if action == "update_fpl_table":
                         extracted_group = match.group(2)
                         game_week = int(extracted_group)
-                        self._handle_update_fpl_table(game_week=game_week)
+                        self._run_in_error_wrapper(self._handle_update_fpl_table)(game_week=game_week)
                     elif action == "get_revenues":
                         extracted_group = match.group(1)
-                        self._handle_get_revenues()
+                        self._run_in_error_wrapper(self._handle_get_revenues)()
                     else:
                         pass
 
@@ -77,11 +77,23 @@ class LineMessageAPI:
         
         return self.app
     
+    
+    def _run_in_error_wrapper(self,callback):
+        def wrapped_func(*args, **kwargs):
+            try:
+                return callback(*args, **kwargs)
+            except Exception as e:
+                self.message_service.send_text_message("Oops...something went wrong")
+                logger.error(e)
+        return wrapped_func
+    
     def _handle_update_fpl_table(self,game_week:int):
+        self.message_service.send_text_message(f"Gameweek {game_week} result is being processed. Please wait for a moment")
         players = self.fpl_service.update_fpl_table(gw=game_week)
         self.message_service.send_gameweek_result_message(game_week=game_week,players=players)
         
     def _handle_get_revenues(self):
+        self.message_service.send_text_message("Players revenue is being processed. Please wait for a moment")
         players = self.fpl_service.list_players_revenues()
         self.message_service.send_playeres_revenue_summary(players_revenues=players)
         
