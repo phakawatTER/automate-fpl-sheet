@@ -1,7 +1,10 @@
 import argparse
+from oauth2client.service_account import ServiceAccountCredentials
 from loguru import logger
 from services import FPLService,MessageService
 from config import Config
+from adapter import GoogleSheet
+
 
 
 class InvalidInputException(Exception):
@@ -30,8 +33,11 @@ def main():
     # initialize config
     config = Config.initialize("./config.json")
 
-    # update FPL table
-    players = FPLService.update_fpl_table(gameweek,config=config)
+    credential = ServiceAccountCredentials.from_json_keyfile_name("./service_account.json")
+    google_sheet = GoogleSheet(credential=credential)
+    google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
+    fpl_service = FPLService(config=config,google_sheet=google_sheet)
+    players = fpl_service.update_fpl_table(gameweek)
 
     message_service = MessageService(config=config)
     message_service.send_gameweek_result_message(players=players,game_week=gameweek)

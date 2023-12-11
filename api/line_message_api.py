@@ -6,6 +6,7 @@ from linebot.models import MessageEvent,TextMessage,SourceGroup
 from linebot.exceptions import InvalidSignatureError
 from loguru import logger
 from services import FPLService,MessageService
+from adapter import GoogleSheet
 from config.config import Config
 
 SECOND = 1000
@@ -20,11 +21,14 @@ class LineMessageAPI:
         r"get (revenue|rev)": "get_revenues",
     }
 
-    def __init__(self,config:Config):
+    def __init__(self,config:Config,credential:dict):
         self.app = Flask(__name__)
         self.handler = WebhookHandler(config.line_channel_secret)
         self.message_service = MessageService(config=config)
         self.config = config
+        google_sheet = GoogleSheet(credential=credential)
+        google_sheet.open_sheet_by_url(config.sheet_url)
+        self.fpl_service = FPLService(config=self.config,google_sheet=google_sheet)
         
     def initialize(self):
         handler = WebhookHandler(self.config.line_channel_secret)
@@ -48,7 +52,7 @@ class LineMessageAPI:
                 return
             message:TextMessage = event.message
             now = _get_timestamp()
-            if now - event.timestamp > 1 * SECOND:
+            if now - event.timestamp > 15 * SECOND:
                 return
             
             text:str = message.text
@@ -74,10 +78,10 @@ class LineMessageAPI:
         return self.app
     
     def _handle_update_fpl_table(self,game_week:int):
-        players = FPLService.update_fpl_table(gw=game_week,config=self.config)
+        players = self.fpl_service.update_fpl_table(gw=game_week)
         self.message_service.send_gameweek_result_message(game_week=game_week,players=players)
         
     def _handle_get_revenues(self):
-        players = FPLService.list_players_revenues(self.config)
+        players = self.fpl_service.list_players_revenues()
         self.message_service.send_playeres_revenue_summary(players_revenues=players)
         

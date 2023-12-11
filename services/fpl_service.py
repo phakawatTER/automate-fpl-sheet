@@ -85,15 +85,18 @@ def _update_player_score_in_sheet(
                 break
             
 class Service:
+    def __init__(self,google_sheet:GoogleSheet,config:Config):
+        self.config = config
+        self.google_sheet = google_sheet
+        self.fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
     
-    @staticmethod
-    def update_fpl_table(gw:int,config:Config):
-        fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
+    def update_fpl_table(self,gw:int):
 
-        h2h_result = fpl_adapter.get_h2h_results(game_week=gw)
+        h2h_result = self.fpl_adapter.get_h2h_results(game_week=gw)
 
         player_score:Dict[int, PlayerResultData] = {}
         results = h2h_result.results
+        print(results)
 
         players:List[PlayerResultData] = []
         for result in results:
@@ -106,20 +109,20 @@ class Service:
             p2_score = add_noise(result.entry_2_points)
             p2_id = result.entry_2_entry
            
-            if p1_name not in config.ignore_players:
+            if p1_name not in self.config.ignore_players:
                 player_score[p1_id] = PlayerResultData(p1_name,p1_id,p1_score)
-            if p2_name not in config.ignore_players:
+            if p2_name not in self.config.ignore_players:
                 player_score[p2_id] = PlayerResultData(p2_name,p2_id,p2_score)
 
         for player_id in tqdm(player_score, total=len(player_score), desc="Processing", unit="item",file=sys.stdout):
-            player_team = fpl_adapter.get_player_team_by_id(player_id,game_week=gw)
+            player_team = self.fpl_adapter.get_player_team_by_id(player_id,game_week=gw)
             for pick in player_team.picks:
                 if pick.is_captain:
-                    c = fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
+                    c = self.fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
                     player_score[player_id].score += c.total_points / 10000 * pick.multiplier
                     player_score[player_id].captain_points = c.total_points * pick.multiplier
                 if pick.is_vice_captain:
-                    c = fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
+                    c = self.fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
                     player_score[player_id].score += c.total_points / 1000000 * pick.multiplier
                     player_score[player_id].vice_captain_points = c.total_points * pick.multiplier
             player = player_score[player_id]
@@ -127,10 +130,8 @@ class Service:
         # Sorting the list of PlayerResultData instances by the 'score' attribute
         players = sorted(players, key=lambda player: player.score, reverse=True)
         players = expand_check_dupl_score(players=players)
-
-        sheet = GoogleSheet("./service_account.json")
-        sheet = sheet.open_sheet_by_url(config.sheet_url)
-        worksheet = sheet.open_worksheet_from_default_sheet(config.worksheet_name)
+        
+        worksheet = self.google_sheet.open_worksheet_from_default_sheet(self.config.worksheet_name)
         
 
         current_score_col = START_SCORE_COL + ( (gw - 1) * 3 )
@@ -139,28 +140,24 @@ class Service:
         first_score_cell = worksheet.cell(START_SCORE_ROW,current_score_col)
         if first_score_cell.numeric_value is None:
             # update score in sheet
-            _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=START_SCORE_ROW,players=players,worksheet=worksheet,config=config)
+            _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=START_SCORE_ROW,players=players,worksheet=worksheet,config=self.config)
             # update players's reward from sheet           
-            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=config)
+            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=self.config)
             # update player's shared reward (duplicated)
             _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
         else:
             # update players's reward from sheet           
-            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=config)
+            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=self.config)
         
         return players
 
-    @staticmethod
-    def list_players_revenues(config:Config):
-        fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
-        standing_result = fpl_adapter.get_h2h_league_standing()
+    def list_players_revenues(self):
+        standing_result = self.fpl_adapter.get_h2h_league_standing()
         standings = standing_result.standings
         
-        sheet = GoogleSheet("./service_account.json")
-        sheet = sheet.open_sheet_by_url(config.sheet_url)
-        worksheet = sheet.open_worksheet_from_default_sheet(config.worksheet_name)
+        worksheet = self.google_sheet.open_worksheet_from_default_sheet(self.config.worksheet_name)
         
-        player_ids = [x.value for x in worksheet.range(config.player_ids_range)]
+        player_ids = [x.value for x in worksheet.range(self.config.player_ids_range)]
         revenue_col = START_SCORE_COL + (37 * 3) + 4
         players:List[PlayerRevenue] = []
         for i,player_id in enumerate(player_ids):
