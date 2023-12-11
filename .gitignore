@@ -4,3 +4,7 @@ __pycache__/
 fpl/
 .DS_Store
 config.json
+deployment_package/
+package.zip
+layer/
+template-export.yml

@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform:
+  - AWS::Serverless-2016-10-31
+Description: "FPL Line Message App"
+
+Resources:
+  FPLLLineMessageAPILayer:
+    Type: "AWS::Serverless::LayerVersion"
+    Properties:
+      LayerName: FPLLMessageAPILayer
+      CompatibleRuntimes:
+        - python3.9
+      CompatibleArchitectures:
+        - "x86_64"
+      ContentUri: ./layer # Path to the folder containing Node.js modules for the layer
+      Description: FPL Line Message API Layer
+
+  FPLLineMessageAPI:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Layers:
+        - !Ref FPLLLineMessageAPILayer
+      FunctionName: FPLLineMessageAPI
+      Handler: "lambda/line_message_api.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 512
+
+  FPLPolicy:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "FPLPolicy"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: "LambdaExecutionPolicy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "arn:aws:logs:*:*:*"
+              - Effect: Allow
+                Action:
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:PutObject"
+                Resource:
+                  - "arn:aws:s3:::ds-fpl/*" # Replace with your actual bucket name
