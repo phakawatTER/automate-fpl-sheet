@@ -1,11 +1,13 @@
-from .fpl_type import FantasyTeam,\
+from .fpl_model import FantasyTeam,\
     EntryHistory,\
     Fixture,H2HData,\
     H2HResponse,Pick,\
     PlayerData,PlayerHistory,\
-    PlayerSeasonHistory
+    PlayerSeasonHistory,\
+    FPLLeagueStandings,\
+    FPLTeamStanding
 
-from .model import PlayerData as PlayerResultData
+from .model import PlayerData as PlayerResultData,PlayerRevenue
 
 __all__ = [
     "FantasyTeam",
@@ -17,5 +19,8 @@ __all__ = [
     "PlayerData",
     "PlayerHistory",
     "PlayerSeasonHistory",
-    "PlayerResultData"
+    "PlayerResultData",
+    "PlayerRevenue",
+    "FPLLeagueStandings",
+    "FPLTeamStanding"
 ]

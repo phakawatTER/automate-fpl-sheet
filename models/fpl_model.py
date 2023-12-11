@@ -1,4 +1,4 @@
-from typing import List
+from typing import List,Optional
 
 class H2HResponse:
     def __init__(self, response:dict):
@@ -169,3 +169,31 @@ class PlayerSeasonHistory:
         self.expected_assists = expected_assists
         self.expected_goal_involvements = expected_goal_involvements
         self.expected_goals_conceded = expected_goals_conceded
+
+
+
+class FPLLeagueStandings:
+    def __init__(self, league_id: int, league_name: str, standings: List[dict]):
+        self.league_id = league_id
+        self.league_name = league_name
+        self.standings = [FPLTeamStanding(**team_data) for team_data in standings]
+
+class FPLTeamStanding:
+    def __init__(self, id: int, division: int, entry: Optional[int], player_name: str,
+                 rank: int, last_rank: int, rank_sort: int, total: int, entry_name: str,
+                 matches_played: int, matches_won: int, matches_drawn: int, matches_lost: int,
+                 points_for: int):
+        self.id = id
+        self.division = division
+        self.entry = entry
+        self.player_name = player_name
+        self.rank = rank
+        self.last_rank = last_rank
+        self.rank_sort = rank_sort
+        self.total = total
+        self.entry_name = entry_name
+        self.matches_played = matches_played
+        self.matches_won = matches_won
+        self.matches_drawn = matches_drawn
+        self.matches_lost = matches_lost
+        self.points_for = points_for

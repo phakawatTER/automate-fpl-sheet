@@ -1,17 +1,15 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
 import requests as r
-from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory
+from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings
 
 class FPLError(Exception):
     def __init__(self,message:str):
         super().__init__(message)
         self.message = message
-        
+
     def error(self):
         return self.message
-    
-
 
 class FPLAdapter:
 
@@ -21,8 +19,21 @@ class FPLAdapter:
     def __init__(self,league_id:int,cookies:str):
         self.cookies = cookies
         self.league_id = league_id
+
+    def get_h2h_league_standing(self):
+        url = urljoin(FPLAdapter.BASE_URL,f"/api/leagues-h2h/{self.league_id}/standings/?page_new_entries=1&page_standings=1")
+        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
+        data:dict = response.json()
         
-    def get_h2h_results(self,game_week:int)-> H2HResponse:
+        return FPLLeagueStandings(
+            league_id=data.get("league").get("id"),
+            league_name=data.get("league").get("name"),
+            standings=data.get("standings").get("results")
+        )
+        
+    def get_h2h_results(self,game_week:int):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/leagues-h2h-matches/league/{self.league_id}/?page=1&event={game_week}")
         response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
         if response.status_code != HTTPStatus.OK:

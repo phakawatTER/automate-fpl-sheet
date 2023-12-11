@@ -1,7 +1,8 @@
 import argparse
 from loguru import logger
-from services import FPLService
+from services import FPLService,MessageService
 from config import Config
+
 
 class InvalidInputException(Exception):
     def __init__(self,message:str):
@@ -25,10 +26,15 @@ def main():
         raise InvalidInputException("invalid gameweek value. should be in range 1-38")
 
     logger.info(f"processing gameweek {gameweek}")
+
     # initialize config
     config = Config.initialize("./config.json")
+
     # update FPL table
-    FPLService.update_fpl_table(gameweek,config=config)
+    players = FPLService.update_fpl_table(gameweek,config=config)
+
+    # message_service = MessageService(config=config)
+    # message_service.send_gameweek_result_message(players=players,game_week=gameweek)
     
 
 if __name__ == "__main__":

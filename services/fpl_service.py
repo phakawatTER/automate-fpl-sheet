@@ -2,12 +2,16 @@ import sys
 import random
 from typing import Dict,List
 from tqdm import tqdm
-from loguru import logger
 from gspread import Worksheet
 from adapter import FPLAdapter,GoogleSheet
 from config import Config
-from models import PlayerResultData
-from .message import MessageService
+from models import PlayerResultData,PlayerRevenue
+from loguru import logger
+
+
+# F4
+START_SCORE_COL = 6
+START_SCORE_ROW = 4
 
         
 def add_noise(value, noise_factor=0.0000000099):
@@ -40,10 +44,13 @@ def _update_players_reward_from_sheet(
     config:Config,
 ):
     player_ids = [t[0] for t in  worksheet.get(config.player_ids_range)]
+    player_bank_accounts = [t[0] for t in  worksheet.get(config.player_bank_account_range)]
     # update reward of each players
     for i,player_id in enumerate(player_ids):
+        bank_account = player_bank_accounts[i]
         for player in players:
-            if player.player_id == int(player_id) and player.reward_division > 1:
+            if player.player_id == int(player_id):
+                player.bank_account = bank_account
                 current_score_row = start_score_row + i
                 cv = worksheet.cell(current_score_row,current_reward_col)
                 player.reward = int(cv.value)
@@ -57,7 +64,7 @@ def _update_players_shared_reward(
 ):
     players_with_shared_reward:List[PlayerResultData] = [player for player in players if player.reward_division > 1]
     for player in players_with_shared_reward:
-        sum_reward_amount = player.reward
+        sum_reward_amount = 0
         for _player in players:
             if _player.player_id in player.shared_reward_player_ids:
                 sum_reward_amount += _player.reward
@@ -78,10 +85,8 @@ def _update_player_score_in_sheet(
                 current_score_row = start_score_row + i
                 worksheet.update_cell(current_score_row,current_score_col, player.score)
                 break
-        
+            
 class Service:
-    def __init__(self):
-        pass
     
     @staticmethod
     def update_fpl_table(gw:int,config:Config):
@@ -93,7 +98,7 @@ class Service:
         results = h2h_result.results
 
         players:List[PlayerResultData] = []
-        for result in results: 
+        for result in results:
             # player 1
             p1_name = result.entry_1_name
             p1_score = add_noise(result.entry_1_points)
@@ -102,7 +107,7 @@ class Service:
             p2_name = result.entry_2_name
             p2_score = add_noise(result.entry_2_points)
             p2_id = result.entry_2_entry
-            
+           
             if p1_name not in config.ignore_players:
                 player_score[p1_id] = PlayerResultData(p1_name,p1_id,p1_score)
             if p2_name not in config.ignore_players:
@@ -124,26 +129,52 @@ class Service:
         # Sorting the list of PlayerResultData instances by the 'score' attribute
         players = sorted(players, key=lambda player: player.score, reverse=True)
         players = expand_check_dupl_score(players=players)
-        for rank,player in enumerate(players,start=0):
-            logger.info(f"({rank+1}){player.name}: {player.score} {player.captain_points} {player.vice_captain_points}")
 
         sheet = GoogleSheet("./service_account.json")
         sheet = sheet.open_sheet_by_url(config.sheet_url)
-        worksheet = sheet.open_worksheet_from_default_sheet("Sheet3")
-        # E4
-        start_score_col = 5
-        start_score_row = 4
+        worksheet = sheet.open_worksheet_from_default_sheet(config.worksheet_name)
+        
 
-        current_score_col = start_score_col + ( (gw - 1) * 3 )
+        current_score_col = START_SCORE_COL + ( (gw - 1) * 3 )
         current_reward_col = current_score_col + 2
+        
+        first_score_cell = worksheet.cell(START_SCORE_ROW,current_score_col)
+        if first_score_cell.numeric_value is None:
+            # update score in sheet
+            _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=START_SCORE_ROW,players=players,worksheet=worksheet,config=config)
+            # update players's reward from sheet           
+            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=config)
+            # update player's shared reward (duplicated)
+            _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
+        else:
+            # update players's reward from sheet           
+            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=config)
+        
+        return players
 
+    @staticmethod
+    def list_players_revenues(config:Config):
+        fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
+        standing_result = fpl_adapter.get_h2h_league_standing()
+        standings = standing_result.standings
         
-        # update score in sheet
-        _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=start_score_row,players=players,worksheet=worksheet,config=config)
-        # update players's reward from sheet                
-        _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=start_score_row,config=config)
-        # update player's shared reward (duplicated)
-        _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
+        sheet = GoogleSheet("./service_account.json")
+        sheet = sheet.open_sheet_by_url(config.sheet_url)
+        worksheet = sheet.open_worksheet_from_default_sheet(config.worksheet_name)
         
-        message_service = MessageService(config=config)
-        message_service.send_gameweek_result_message(players=players,game_week=gw)
+        player_ids = [x.value for x in worksheet.range(config.player_ids_range)]
+        revenue_col = START_SCORE_COL + (37 * 3) + 4
+        players:List[PlayerRevenue] = []
+        for i,player_id in enumerate(player_ids):
+            for standing in standings:
+                if standing.entry == int(player_id):
+                    sheet_row = START_SCORE_ROW + i
+                    cell_value = worksheet.cell(sheet_row,revenue_col).numeric_value
+                    player = PlayerRevenue(name=standing.entry_name,revenue=cell_value)
+                    players.append(player)
+                    
+        players = sorted(players, key=lambda player: player.revenue, reverse=True)
+            
+        
+        return players
+        
