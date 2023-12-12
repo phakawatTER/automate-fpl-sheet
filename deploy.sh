@@ -13,7 +13,7 @@ cp -rf models deployment_package
 cp -rf services deployment_package
 cp -rf util deployment_package
 
-cp -rf fpl/lib layer/python
+cp -rf env_fpl/lib layer/python
 
 random_string=$(date +'%Y%m%d%H%M%S')
 echo "$random_string" > version.txt
