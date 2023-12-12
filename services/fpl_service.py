@@ -5,7 +5,7 @@ from tqdm import tqdm
 from gspread import Worksheet
 from adapter import FPLAdapter,GoogleSheet
 from config import Config
-from models import PlayerResultData,PlayerRevenue
+from models import PlayerResultData,PlayerRevenue,FPLEventStatus
 
 
 # F4
@@ -172,4 +172,11 @@ class Service:
             
         
         return players
+    
+    def get_current_gameweek(self) -> FPLEventStatus:
+        result = self.fpl_adapter.get_current_gameweek()
+        if len(result.status) == 0:
+            raise Exception("gameweek not found")
+        gameweek_status = result.status[0]
         
+        return gameweek_status

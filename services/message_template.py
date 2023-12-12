@@ -27,6 +27,35 @@ class _CommonMessage:
         
     def _get_container(self):
         return self.container
+    
+class GameweekReminderMessage(_CommonMessage):
+    def __init__(self,sheet_url:str,game_week:int):
+        super().__init__(sheet_url=sheet_url)
+        self.game_week = game_week
+    def build(self):
+        message = self._get_container()
+        body = {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"GAMEWEEK {self.game_week} IS COMING",
+                        "weight": "bold",
+                        "size": "md"
+                    },
+                    {
+                        "type": "text",
+                        "text": "อย่าลืมจัดตัวกันนะจ๊ะ",
+                        "weight": "regular",
+                        "margin": "xl",
+                        "size": "md"
+                    },
+                ]
+        }
+        message["body"] = body
+        
+        return message
 
 class GameweekResultMessage(_CommonMessage):
     def __init__(self,players:List[PlayerResultData],game_week:int,sheet_url:str):

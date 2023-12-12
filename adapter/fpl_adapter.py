@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
 import requests as r
-from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings
+from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings,FPLEventStatusResponse
 
 class FPLError(Exception):
     def __init__(self,message:str):
@@ -19,6 +19,16 @@ class FPLAdapter:
     def __init__(self,league_id:int,cookies:str):
         self.cookies = cookies
         self.league_id = league_id
+        
+    def get_current_gameweek(self):
+        url = urljoin(FPLAdapter.BASE_URL,"/api/event-status")
+        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
+        data:dict = response.json()
+        
+        return FPLEventStatusResponse(status=data.get("status"),leagues=data.get("leagues"))
+        
 
     def get_h2h_league_standing(self):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/leagues-h2h/{self.league_id}/standings/?page_new_entries=1&page_standings=1")

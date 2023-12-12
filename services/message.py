@@ -2,7 +2,7 @@ from typing import List
 from line import LineBot
 from config import Config
 from models import PlayerResultData,PlayerRevenue
-from .message_template import GameweekResultMessage,RevenueMessage
+from .message_template import GameweekResultMessage,RevenueMessage,GameweekReminderMessage
 
         
 
@@ -31,3 +31,10 @@ class MessageService:
         )
         
         self.bot.send_flex_message(self.group_id,flex_message=message.build(),alt_text="FPL Players Revenues")
+    
+    def send_gameweek_reminder_message(self,game_week:int):
+        message = GameweekReminderMessage(
+            sheet_url=self.sheet_url,
+            game_week=game_week
+        )
+        self.bot.send_flex_message(self.group_id,flex_message=message.build(),alt_text=f"Gameweek {game_week} is coming")

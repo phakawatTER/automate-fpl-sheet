@@ -62,7 +62,7 @@ Globals:
             Access-Control-Allow-Methods: "'OPTIONS,POST,GET,PUT,DELETE'"
 
 Resources:
-  FPLLLineMessageAPILayer:
+  FPLPythonLayer:
     Type: "AWS::Serverless::LayerVersion"
     Properties:
       LayerName: FPLLMessageAPILayer
@@ -77,7 +77,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Layers:
-        - !Ref FPLLLineMessageAPILayer
+        - !Ref FPLPythonLayer
       FunctionName: FPLLineMessageAPI
       Handler: "lambda/line_message_api.handler"
       CodeUri: "./deployment_package"
@@ -91,6 +91,42 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: Any
+
+  FPLLineAutomateGameweekMessageSender:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: FPLLineAutomateGameweekMessageSender
+      Layers:
+        - !Ref FPLPythonLayer
+      Handler: "lambda/automate_bot.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 512
+      Events:
+        ScheduleRule:
+          Type: Schedule
+          Properties:
+            Schedule: cron(0 0 0 * ? TUE)
+
+  FPLGameweekReminder:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: FPLGameweekReminder
+      Layers:
+        - !Ref FPLPythonLayer
+      Handler: "lambda/gameweek_reminder.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 512
+      Events:
+        ScheduleRule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(30 minutes)
 
   FPLPolicy:
     Type: "AWS::IAM::Role"

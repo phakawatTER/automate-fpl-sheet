@@ -197,3 +197,17 @@ class FPLTeamStanding:
         self.matches_drawn = matches_drawn
         self.matches_lost = matches_lost
         self.points_for = points_for
+        
+class FPLEventStatusResponse:
+    def __init__(self,status:List[dict],leagues:bool=False):
+        self.leagues:bool = leagues
+        self.status:FPLEventStatus = [
+            FPLEventStatus(s.get("bonus_added"),s.get("date"),s.get("event"),s.get("points")) for s in status
+        ]
+    
+class FPLEventStatus:
+    def __init__(self,bonus_added,date,event,points):
+        self.bonus_added = bonus_added
+        self.date = date
+        self.event = event
+        self.points = points

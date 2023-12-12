@@ -5,7 +5,9 @@ from .fpl_model import FantasyTeam,\
     PlayerData,PlayerHistory,\
     PlayerSeasonHistory,\
     FPLLeagueStandings,\
-    FPLTeamStanding
+    FPLTeamStanding,\
+    FPLEventStatusResponse,\
+    FPLEventStatus
 
 from .model import PlayerData as PlayerResultData,PlayerRevenue
 
@@ -22,5 +24,7 @@ __all__ = [
     "PlayerResultData",
     "PlayerRevenue",
     "FPLLeagueStandings",
-    "FPLTeamStanding"
+    "FPLTeamStanding",
+    "FPLEventStatusResponse",   
+    "FPLEventStatus",   
 ]
