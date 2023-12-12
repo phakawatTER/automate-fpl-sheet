@@ -108,7 +108,7 @@ Resources:
         ScheduleRule:
           Type: Schedule
           Properties:
-            Schedule: cron(0 0 0 * ? TUE)
+            Schedule: cron(0 5 ? * TUE *)
 
   FPLGameweekReminder:
     Type: AWS::Serverless::Function
