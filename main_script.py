@@ -1,7 +1,7 @@
 import argparse
 from oauth2client.service_account import ServiceAccountCredentials
 from loguru import logger
-from services import FPLService,MessageService
+from services import FPLService
 from config import Config
 from adapter import GoogleSheet
 
@@ -37,11 +37,7 @@ def main():
     google_sheet = GoogleSheet(credential=credential)
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(config=config,google_sheet=google_sheet)
-    players = fpl_service.update_fpl_table(gameweek)
-
-    message_service = MessageService(config=config)
-    message_service.send_gameweek_result_message(players=players,game_week=gameweek)
-    
+    fpl_service.update_fpl_table(gameweek)
 
 if __name__ == "__main__":
     main()

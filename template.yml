@@ -92,6 +92,31 @@ Resources:
             Path: /{proxy+}
             Method: Any
 
+  FPLLineMessageAPIWarmer:
+    Type: AWS::Serverless::Function
+    DependsOn:
+      - FPLLineMessageAPI
+    Properties:
+      FunctionName: FPLineMessageAPIWarmer
+      Handler: "lambda/warmer.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 512
+      Layers:
+        - !Ref FPLPythonLayer
+      Environment:
+        Variables:
+          FUNCTION_NAME: "FPLLineMessageAPI"
+          HEALTH_CHECK_PATH: "/health-check"
+          COUNT: "15"
+      Events:
+        Timer:
+          Type: Schedule
+          Properties:
+            Schedule: rate(3 minutes)
+
   FPLLineAutomateGameweekMessageSender:
     Type: AWS::Serverless::Function
     Properties:
@@ -156,4 +181,8 @@ Resources:
                   - "s3:ListBucket"
                   - "s3:PutObject"
                 Resource:
-                  - "arn:aws:s3:::ds-fpl/*" # Replace with your actual bucket name
+                  - "arn:aws:s3:::ds-fpl/*"
+              - Effect: Allow
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: "*"

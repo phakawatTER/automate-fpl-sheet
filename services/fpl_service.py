@@ -89,7 +89,7 @@ class Service:
         self.config = config
         self.google_sheet = google_sheet
         self.fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
-    
+
     def update_fpl_table(self,gw:int):
 
         h2h_result = self.fpl_adapter.get_h2h_results(game_week=gw)
@@ -108,7 +108,7 @@ class Service:
             p2_name = result.entry_2_name
             p2_score = add_noise(result.entry_2_points)
             p2_id = result.entry_2_entry
-           
+
             if p1_name not in self.config.ignore_players:
                 player_score[p1_id] = PlayerResultData(p1_name,p1_id,p1_score)
             if p2_name not in self.config.ignore_players:

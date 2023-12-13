@@ -17,7 +17,6 @@ class Config(object):
         self.line_channel_access_token:str = config_data.get("line_channel_access_token")
         self.line_channel_id:str = config_data.get("line_channel_id")
         self.line_channel_secret:str = config_data.get("line_channel_secret")
-        self.line_group_id:str = config_data.get("line_group_id")
         
     @staticmethod
     def initialize(path_to_config:str):

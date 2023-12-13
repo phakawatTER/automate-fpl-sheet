@@ -1,5 +1,6 @@
 import sys
 import os
+from typing import List
 import awsgi
 from boto3.session import Session
 from oauth2client.service_account import ServiceAccountCredentials
@@ -12,18 +13,25 @@ from config import Config
 from api import LineMessageAPI
 from adapter import S3Downloader
 
-def handler(event,context):
-    print(event)
-    print(context)
+IS_INIT = False
+CONFIG:Config
+CREDENTIAL:ServiceAccountCredentials
+
+def _init():
+    global CONFIG,CREDENTIAL,IS_INIT
     sess = Session()
     s3_downloader = S3Downloader(sess,"ds-fpl","/tmp")
     file_path = s3_downloader.download_file_from_default_bucket("config.json")
-    config = Config(file_path)
-    
+    CONFIG = Config(file_path)
     file_path = s3_downloader.download_file_from_default_bucket("service_account.json")
-    credential = ServiceAccountCredentials.from_json_keyfile_name(file_path)
+    CREDENTIAL = ServiceAccountCredentials.from_json_keyfile_name(file_path)
+    IS_INIT = True
+
+def handler(event,context):
+    if not IS_INIT:
+        _init()
     
-    app = LineMessageAPI(config=config,credential=credential).initialize()
+    app = LineMessageAPI(config=CONFIG,credential=CREDENTIAL).initialize()
     return awsgi.response(app,event,context)
 
 

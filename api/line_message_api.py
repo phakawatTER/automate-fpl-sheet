@@ -32,6 +32,12 @@ class LineMessageAPI:
         
     def initialize(self):
         handler = WebhookHandler(self.config.line_channel_secret)
+        
+        @self.app.route("/health-check", methods=["GET"])
+        def health_check():
+            return {
+                "message": "OK"
+            }
 
         @self.app.route("/callback", methods=['POST'])
         def callback():
@@ -43,13 +49,13 @@ class LineMessageAPI:
                 logger.error(e)
                 abort(400)
                 
-            return 'OK'
+            return {
+                "message": "OK"
+            }
 
         @handler.add(MessageEvent, message=TextMessage)
         def handle_message(event:MessageEvent):
             source:SourceGroup = event.source
-            if source.group_id != self.config.line_group_id:
-                return
             message:TextMessage = event.message
             now = _get_timestamp()
             if now - event.timestamp > 15 * SECOND:
@@ -65,10 +71,10 @@ class LineMessageAPI:
                     if action == "update_fpl_table":
                         extracted_group = match.group(2)
                         game_week = int(extracted_group)
-                        self._run_in_error_wrapper(self._handle_update_fpl_table)(game_week=game_week)
+                        self._run_in_error_wrapper(self._handle_update_fpl_table)(game_week=game_week,group_id=source.group_id)
                     elif action == "get_revenues":
                         extracted_group = match.group(1)
-                        self._run_in_error_wrapper(self._handle_get_revenues)()
+                        self._run_in_error_wrapper(self._handle_get_revenues)(group_id=source.group_id)
                     else:
                         pass
 
@@ -83,17 +89,17 @@ class LineMessageAPI:
             try:
                 return callback(*args, **kwargs)
             except Exception as e:
-                self.message_service.send_text_message("Oops...something went wrong")
                 logger.error(e)
+                self.message_service.send_text_message("Oops...something went wrong",group_id=kwargs["group_id"])
         return wrapped_func
     
-    def _handle_update_fpl_table(self,game_week:int):
-        self.message_service.send_text_message(f"Gameweek {game_week} result is being processed. Please wait for a moment")
+    def _handle_update_fpl_table(self,game_week:int,group_id:str):
+        self.message_service.send_text_message(f"Gameweek {game_week} result is being processed. Please wait for a moment",group_id=group_id)
         players = self.fpl_service.update_fpl_table(gw=game_week)
-        self.message_service.send_gameweek_result_message(game_week=game_week,players=players)
+        self.message_service.send_gameweek_result_message(game_week=game_week,players=players,group_id=group_id)
         
-    def _handle_get_revenues(self):
-        self.message_service.send_text_message("Players revenue is being processed. Please wait for a moment")
+    def _handle_get_revenues(self,group_id:str):
+        self.message_service.send_text_message("Players revenue is being processed. Please wait for a moment",group_id=group_id)
         players = self.fpl_service.list_players_revenues()
-        self.message_service.send_playeres_revenue_summary(players_revenues=players)
+        self.message_service.send_playeres_revenue_summary(players_revenues=players,group_id=group_id)
         

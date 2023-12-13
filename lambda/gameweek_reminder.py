@@ -37,7 +37,8 @@ def handler(_event,_context):
     worksheet = google_sheet.open_worksheet_from_default_sheet(config.worksheet_name)
     # L:37
     cell_value = worksheet.cell(37,10).numeric_value
-    if gw_status != cell_value:
+    if gw_status.event != cell_value:
         message_service = MessageService(config)
-        message_service.send_gameweek_reminder_message(game_week=gw_status.event)
+        # NOTE: group_id should be fetched from database
+        message_service.send_gameweek_reminder_message(game_week=gw_status.event,group_id="C6402ad4c1937733c7db4e3ff7181287c")
         worksheet.update_cell(37,10,gw_status.event)

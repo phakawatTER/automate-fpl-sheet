@@ -28,5 +28,6 @@ def handler(_event,_context):
     players = fpl_service.update_fpl_table(gw_status.event)
 
     message_service = MessageService(config=config)
-    message_service.send_gameweek_result_message(gw_status.event,players)
+    # NOTE: group_id here should be fetched from database. hardcode it for now
+    message_service.send_gameweek_result_message(gw_status.event,players,group_id="C6402ad4c1937733c7db4e3ff7181287c")
     
