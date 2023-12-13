@@ -23,7 +23,7 @@ sam package --debug --template template.yml  --s3-bucket ds-fpl \
 --s3-prefix "cloudformation-package" \
 --output-template-file template-export.yml
 
-aws cloudformation deploy \
+sam deploy \
 --template-file template-export.yml \
 --stack-name fpl-line-message-api \
 --capabilities CAPABILITY_NAMED_IAM

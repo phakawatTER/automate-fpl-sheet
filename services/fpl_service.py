@@ -1,13 +1,21 @@
 import sys
 import random
-from typing import Dict,List
+import json
+from typing import Dict,List,Optional
+from copy import copy
+
 from tqdm import tqdm
 from gspread import Worksheet
-from adapter import FPLAdapter,GoogleSheet
+from loguru import logger
+
+from adapter import FPLAdapter,GoogleSheet,DynamoDB
 from config import Config
 from models import PlayerResultData,PlayerRevenue,FPLEventStatus
 
 
+
+
+CACHE_TABLE_NAME = "FPLCacheTable"
 # F4
 START_SCORE_COL = 6
 START_SCORE_ROW = 4
@@ -61,6 +69,7 @@ def _update_players_shared_reward(
     current_reward_col:int
 ):
     players_with_shared_reward:List[PlayerResultData] = [player for player in players if player.reward_division > 1]
+    player_new_reward_map:Dict[int,float] = {}
     for player in players_with_shared_reward:
         sum_reward_amount = 0
         for _player in players:
@@ -68,6 +77,10 @@ def _update_players_shared_reward(
                 sum_reward_amount += _player.reward
         new_reward = sum_reward_amount / player.reward_division
         worksheet.update_cell(player.sheet_row,current_reward_col,new_reward)
+        player_new_reward_map[player.player_id] = new_reward
+        
+    for player in players_with_shared_reward:
+        player.reward = player_new_reward_map[player.player_id]
 
 def _update_player_score_in_sheet(
     players:List[PlayerResultData],
@@ -89,14 +102,41 @@ class Service:
         self.config = config
         self.google_sheet = google_sheet
         self.fpl_adapter = FPLAdapter(league_id=config.league_id,cookies=config.cookies)
+        self.dynamodb = DynamoDB(table_name=CACHE_TABLE_NAME)
+
+    def _lookup_gameweek_result_cache(self,game_week:int)-> Optional[List[PlayerResultData]]:
+        response = self.dynamodb.get_item_by_hash_key(key=f"gameweek-{game_week}")
+        item = response.get("Item")
+        if item is None:
+            return None
+
+        logger.info(f"cache hit for gameweek {game_week}")
+
+        data = item.get("DATA").get("S")
+        players_objs = json.loads(data)
+        player_data_dict = dict.fromkeys(PlayerResultData().__dict__.keys())
+        players:List[PlayerResultData] = []
+        for player_obj in players_objs:
+            init_dict = {}
+            for key in player_data_dict:
+                init_dict[key] = player_obj[key]
+            player = PlayerResultData(**init_dict)
+            players.append(player)
+        return players
+
+    def _put_cache_item(self,key:str,item:any):
+        response = self.dynamodb.put_json_item(key=key,data=item)
+        return response
 
     def update_fpl_table(self,gw:int):
+        cache = self._lookup_gameweek_result_cache(gw)   
+        if cache is not None:
+            return cache
 
         h2h_result = self.fpl_adapter.get_h2h_results(game_week=gw)
 
         player_score:Dict[int, PlayerResultData] = {}
         results = h2h_result.results
-        print(results)
 
         players:List[PlayerResultData] = []
         for result in results:
@@ -137,17 +177,15 @@ class Service:
         current_score_col = START_SCORE_COL + ( (gw - 1) * 3 )
         current_reward_col = current_score_col + 2
         
-        first_score_cell = worksheet.cell(START_SCORE_ROW,current_score_col)
-        if first_score_cell.numeric_value is None:
-            # update score in sheet
-            _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=START_SCORE_ROW,players=players,worksheet=worksheet,config=self.config)
-            # update players's reward from sheet           
-            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=self.config)
-            # update player's shared reward (duplicated)
-            _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
-        else:
-            # update players's reward from sheet           
-            _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=self.config)
+        # update score in sheet
+        _update_player_score_in_sheet(current_score_col=current_score_col,start_score_row=START_SCORE_ROW,players=players,worksheet=worksheet,config=self.config)
+        # update players's reward from sheet           
+        _update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,worksheet=worksheet,start_score_row=START_SCORE_ROW,config=self.config)
+        # update player's shared reward (duplicated)
+        _update_players_shared_reward(current_reward_col=current_reward_col,players=players,worksheet=worksheet)
+            
+        player_cache_items = [player.__dict__ for player in players]
+        self._put_cache_item(key=f"gameweek-{gw}",item=player_cache_items)
         
         return players
 
