@@ -1,7 +1,8 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
+from typing import List
 import requests as r
-from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings,FPLEventStatusResponse
+from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings,FPLEventStatusResponse,MatchFixture
 
 class FPLError(Exception):
     def __init__(self,message:str):
@@ -79,8 +80,15 @@ class FPLAdapter:
             entry_history=data.get("entry_history"),
             picks=data.get("picks"),
         )
-    
         
-        
-        
-        
+    def list_gameweek_fixtures(self,gameweek:int)->List[MatchFixture]:
+        url = urljoin(FPLAdapter.BASE_URL,f"/api/fixtures?event={gameweek}")
+        response = r.get(url=url,params={"cookies":self.cookies},timeout=FPLAdapter.TIMEOUT)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
+        data:List[dict] = response.json()
+        results:List[MatchFixture] = []
+        for d in data:
+            fixture = MatchFixture(data=d)
+            results.append(fixture)
+        return results

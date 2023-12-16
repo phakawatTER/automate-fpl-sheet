@@ -24,10 +24,10 @@ class _CommonMessage:
                 }
             },
         }
-        
+
     def _get_container(self):
         return self.container
-    
+
 class GameweekReminderMessage(_CommonMessage):
     def __init__(self,sheet_url:str,game_week:int):
         super().__init__(sheet_url=sheet_url)
@@ -54,7 +54,7 @@ class GameweekReminderMessage(_CommonMessage):
                 ]
         }
         message["body"] = body
-        
+
         return message
 
 class GameweekResultMessage(_CommonMessage):
@@ -62,25 +62,25 @@ class GameweekResultMessage(_CommonMessage):
         super().__init__(sheet_url=sheet_url)
         self.players = players
         self.game_week = game_week
-        
+
     def build(self):
         message = self._get_container()
-        
+
         body = {
                 "type": "box",
                 "layout": "vertical",
                 "contents": []
         }
-        
+
         body["contents"].append({
             "type": "text",
             "text": f"GAMEWEEK {self.game_week} RESULT",
             "weight": "bold",
             "size": "xl"
         })
-        
+
         top3_icons = ["👑","🎉","🌝"]
-        
+
         for i,player in enumerate(self.players):
             score = math.floor(player.score)
             rank = i+1
@@ -165,15 +165,15 @@ class GameweekResultMessage(_CommonMessage):
                         ]
                     }
                 content["contents"].append(bank_account_box)
-                
-            
-            # add separator
-            content["contents"].append({
-                "type": "separator"
-            })
-            
+
+            if i < len(self.players) - 1:
+                # add separator
+                content["contents"].append({
+                    "type": "separator"
+                })
+
             body["contents"].append(content)
-        
+
         message["body"] = body
 
         return message
@@ -182,35 +182,35 @@ class RevenueMessage(_CommonMessage):
     def __init__(self,sheet_url:str,players_revenues:List[PlayerRevenue]):
         super().__init__(sheet_url=sheet_url)
         self.players_revenues = players_revenues
-        
+
     def build(self):
         message = self._get_container()
-        
+
         body = {
                 "type": "box",
                 "layout": "vertical",
                 "contents": []
         }
-        
+
         body["contents"].append({
             "type": "text",
             "text": "PLAYERS TOTAL REVENUE",
             "weight": "bold",
             "size": "md"
         })
-        
-        
+
+
         message["body"] = body
-        
+
         top3_icons = ["👑","🎉","🌝"]
-        
+
         for i,player in enumerate(self.players_revenues):
             revenue = player.revenue
             name = player.name
             is_top_3 = i <= 2
             if is_top_3:
                 name += f" {top3_icons[i]}"
-            
+
             content = {
                 "type": "box",
                 "layout": "vertical",
@@ -243,13 +243,15 @@ class RevenueMessage(_CommonMessage):
                             }
                         ]
                     },
-                    {
-                        "type": "separator"
-                    },
                 ]
             }
-            
-            
+
+            if i < len(self.players_revenues) - 1:
+                content["contents"].append({
+                    "type": "separator"
+                })
+
+
             body["contents"].append(content)
-        
+
         return message

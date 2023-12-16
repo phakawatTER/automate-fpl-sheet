@@ -1,4 +1,5 @@
-from typing import List,Optional
+from typing import List,Optional,Dict,Union
+from datetime import datetime
 
 class H2HResponse:
     def __init__(self, response:dict):
@@ -207,7 +208,27 @@ class FPLEventStatusResponse:
     
 class FPLEventStatus:
     def __init__(self,bonus_added,date,event,points):
-        self.bonus_added = bonus_added
-        self.date = date
-        self.event = event
-        self.points = points
+        self.bonus_added:bool = bonus_added
+        self.date:str = date
+        self.event:int = event
+        self.points:float = points
+
+class MatchFixture:
+    def __init__(self, data):
+        self.code: int = data.get("code")
+        self.event: int = data.get("event")
+        self.finished: bool = data.get("finished")
+        self.finished_provisional: bool = data.get("finished_provisional")
+        self.id: int = data.get("id")
+        self.kickoff_time: datetime = datetime.strptime(data.get("kickoff_time"), "%Y-%m-%dT%H:%M:%SZ")
+        self.minutes: int = data.get("minutes")
+        self.provisional_start_time: bool = data.get("provisional_start_time")
+        self.started: bool = data.get("started")
+        self.team_a: int = data.get("team_a")
+        self.team_a_score: int = data.get("team_a_score")
+        self.team_h: int = data.get("team_h")
+        self.team_h_score: int = data.get("team_h_score")
+        self.stats: List[Dict[str, Union[str, List[Dict[str, Union[int, str]]]]]] = data.get("stats")
+        self.team_h_difficulty: int = data.get("team_h_difficulty")
+        self.team_a_difficulty: int = data.get("team_a_difficulty")
+        self.pulse_id: int = data.get("pulse_id")

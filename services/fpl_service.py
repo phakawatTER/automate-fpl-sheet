@@ -218,3 +218,7 @@ class Service:
         gameweek_status = result.status[0]
         
         return gameweek_status
+    
+    def list_gameweek_fixtures(self,gameweek:int):
+        gameweek_fixtures = self.fpl_adapter.list_gameweek_fixtures(gameweek=gameweek)
+        return gameweek_fixtures
