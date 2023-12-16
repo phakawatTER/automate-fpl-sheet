@@ -48,7 +48,7 @@ def handler(_event,_context):
     if current_gameweek != cell_value and should_remind:
         message_service = MessageService(config)
         # NOTE: group_id should be fetched from database
-        message_service.send_gameweek_reminder_message(game_week=current_gameweek,group_id="C44a80181a9d0ded2f6c3093adbbd6a8a")
+        message_service.send_gameweek_reminder_message(game_week=current_gameweek,group_id="C6402ad4c1937733c7db4e3ff7181287c")
         worksheet.update_cell(37,10,current_gameweek)
         
 if __name__ == "__main__":
