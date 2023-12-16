@@ -1,6 +1,6 @@
+# pylint: disable=wrong-import-position
 import sys
 import os
-from typing import List
 import awsgi
 from boto3.session import Session
 from oauth2client.service_account import ServiceAccountCredentials

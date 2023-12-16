@@ -2,7 +2,6 @@ import sys
 import random
 import json
 from typing import Dict,List,Optional
-from copy import copy
 
 from tqdm import tqdm
 from gspread import Worksheet
@@ -123,15 +122,29 @@ class Service:
             player = PlayerResultData(**init_dict)
             players.append(player)
         return players
+    
+    def update_gameweek(self,gameweek:int):
+        response = self.dynamodb.put_json_item(key="gameweek",data={
+            "gameweek": gameweek
+        })
+        return response
+    
+    def get_current_gameweek_from_dynamodb(self):
+        item = self.dynamodb.get_item_by_hash_key("gameweek")
+        print(item)
+        data = item.get("Item").get("DATA").get("S")
+        gameweek_data = json.loads(data)
+        return gameweek_data
 
     def _put_cache_item(self,key:str,item:any):
         response = self.dynamodb.put_json_item(key=key,data=item)
         return response
 
     def update_fpl_table(self,gw:int):
-        cache = self._lookup_gameweek_result_cache(gw)   
-        if cache is not None:
-            return cache
+        if not self.is_current_gameweek(gameweek=gw):
+            cache = self._lookup_gameweek_result_cache(gw)   
+            if cache is not None:
+                return cache
 
         h2h_result = self.fpl_adapter.get_h2h_results(game_week=gw)
 
@@ -218,6 +231,10 @@ class Service:
         gameweek_status = result.status[0]
         
         return gameweek_status
+    
+    def is_current_gameweek(self,gameweek:int)->bool:
+        current_gameweek = self.get_current_gameweek_from_dynamodb()
+        return current_gameweek.get("gameweek") == gameweek
     
     def list_gameweek_fixtures(self,gameweek:int):
         gameweek_fixtures = self.fpl_adapter.list_gameweek_fixtures(gameweek=gameweek)

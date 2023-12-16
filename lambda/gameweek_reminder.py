@@ -41,15 +41,15 @@ def handler(_event,_context):
     time_to_remind = earliest_match.kickoff_time - time_to_subtract
     now = datetime.utcnow()
     should_remind = now >= time_to_remind
-
-    worksheet = google_sheet.open_worksheet_from_default_sheet(config.worksheet_name)
-    # L:37
-    cell_value = worksheet.cell(37,10).numeric_value
-    if current_gameweek != cell_value and should_remind:
+    
+    gameweek_data = fpl_service.get_current_gameweek_from_dynamodb()
+    latest_gameweek = gameweek_data.get("gameweek")
+    
+    if current_gameweek != latest_gameweek and should_remind:
         message_service = MessageService(config)
         # NOTE: group_id should be fetched from database
         message_service.send_gameweek_reminder_message(game_week=current_gameweek,group_id="C6402ad4c1937733c7db4e3ff7181287c")
-        worksheet.update_cell(37,10,current_gameweek)
+        fpl_service.update_gameweek(gameweek=current_gameweek)
         
 if __name__ == "__main__":
     handler(None,None)

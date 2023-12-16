@@ -31,3 +31,5 @@ def handler(_event,_context):
     # NOTE: group_id here should be fetched from database. hardcode it for now
     message_service.send_gameweek_result_message(gw_status.event,players,group_id="C6402ad4c1937733c7db4e3ff7181287c")
     
+if __name__ == "__main__":
+    handler(None,None)
