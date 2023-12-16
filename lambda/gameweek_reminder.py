@@ -42,8 +42,7 @@ def handler(_event,_context):
     now = datetime.utcnow()
     should_remind = now >= time_to_remind
     
-    gameweek_data = fpl_service.get_current_gameweek_from_dynamodb()
-    latest_gameweek = gameweek_data.get("gameweek")
+    latest_gameweek = fpl_service.get_current_gameweek_from_dynamodb()
     
     if current_gameweek != latest_gameweek and should_remind:
         message_service = MessageService(config)

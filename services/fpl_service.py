@@ -128,13 +128,6 @@ class Service:
             "gameweek": gameweek
         })
         return response
-    
-    def get_current_gameweek_from_dynamodb(self):
-        item = self.dynamodb.get_item_by_hash_key("gameweek")
-        print(item)
-        data = item.get("Item").get("DATA").get("S")
-        gameweek_data = json.loads(data)
-        return gameweek_data
 
     def _put_cache_item(self,key:str,item:any):
         response = self.dynamodb.put_json_item(key=key,data=item)
@@ -224,6 +217,14 @@ class Service:
         
         return players
     
+    
+    def get_current_gameweek_from_dynamodb(self):
+        item = self.dynamodb.get_item_by_hash_key("gameweek")
+        print(item)
+        data = item.get("Item").get("DATA").get("S")
+        gameweek_data = json.loads(data)
+        return gameweek_data.get("gameweek")
+    
     def get_current_gameweek(self) -> FPLEventStatus:
         result = self.fpl_adapter.get_current_gameweek()
         if len(result.status) == 0:
@@ -234,7 +235,7 @@ class Service:
     
     def is_current_gameweek(self,gameweek:int)->bool:
         current_gameweek = self.get_current_gameweek_from_dynamodb()
-        return current_gameweek.get("gameweek") == gameweek
+        return current_gameweek == gameweek
     
     def list_gameweek_fixtures(self,gameweek:int):
         gameweek_fixtures = self.fpl_adapter.list_gameweek_fixtures(gameweek=gameweek)

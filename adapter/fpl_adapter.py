@@ -15,7 +15,7 @@ class FPLError(Exception):
 class FPLAdapter:
 
     BASE_URL="https://fantasy.premierleague.com"
-    TIMEOUT=5
+    TIMEOUT=10
 
     def __init__(self,league_id:int,cookies:str):
         self.cookies = cookies
