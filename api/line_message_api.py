@@ -11,10 +11,17 @@ from adapter import GoogleSheet
 from config.config import Config
 
 
+class MessageHandlerActionGroup:
+    UPDATE_FPL_TABLE = "update_fpl_table"
+    BATCH_UPDATE_FPL_TABLE = "batch_update_fpl_table"
+    GET_PLAYERS_REVENUES = "get_players_revenues"
+
+
 class LineMessageAPI:
     PATTERN_ACTIONS = {
-        r"get (gw|gameweek) (\d+)": "update_fpl_table",
-        r"get (revenue|rev)": "get_revenues",
+        r"get (gw|gameweek) (\d+-\d+)": MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE,
+        r"get (gw|gameweek) (\d+)": MessageHandlerActionGroup.UPDATE_FPL_TABLE,
+        r"get (revenue|rev)": MessageHandlerActionGroup.GET_PLAYERS_REVENUES,
     }
 
     def __init__(self, config: Config, credential: ServiceAccountCredentials):
@@ -56,7 +63,7 @@ class LineMessageAPI:
                 if match:
                     logger.success("math", match)
                     loop = asyncio.new_event_loop()
-                    if action == "update_fpl_table":
+                    if action == MessageHandlerActionGroup.UPDATE_FPL_TABLE:
                         extracted_group = match.group(2)
                         gameweek = int(extracted_group)
                         loop.run_until_complete(
@@ -64,7 +71,33 @@ class LineMessageAPI:
                                 gameweek=gameweek, group_id=source.group_id
                             )
                         )
-                    elif action == "get_revenues":
+                    elif action == MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE:
+                        extracted_group = match.group(2).split("-")
+                        start_gw = int(extracted_group[0])
+                        end_gw = int(extracted_group[1])
+                        # Validate if start_gw and end_gw are in the range (1, 38)
+                        if 1 <= start_gw <= 38 and 1 <= end_gw <= 38:
+                            # Validate if start_gw is less than or equal to end_gw
+                            if start_gw > end_gw:
+                                self.message_service.send_text_message(
+                                    "Validation error: start_gw should be less than or equal to end_gw",
+                                    source.group_id,
+                                )
+                                abort(403)
+                        else:
+                            self.message_service.send_text_message(
+                                "Validation error: start_gw and end_gw should be in the range (1, 38)",
+                                source.group_id,
+                            )
+                            abort(403)
+                        for gw in range(start_gw, end_gw + 1):
+                            loop.run_until_complete(
+                                self.__run_in_error_wrapper(
+                                    self.__handle_update_fpl_table
+                                )(gameweek=gw, group_id=source.group_id)
+                            )
+
+                    elif action == MessageHandlerActionGroup.GET_PLAYERS_REVENUES:
                         extracted_group = match.group(1)
                         loop.run_until_complete(
                             self.__run_in_error_wrapper(self.__handle_get_revenues)(
