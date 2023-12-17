@@ -12,6 +12,7 @@ class _CommonMessage:
     def __init__(self,sheet_url:str):
         self.container = {
             "type": "bubble",
+            "size": "giga",
             "hero": {
                 "type": "image",
                 "url": "https://www.merlinpcbgroup.com/wp-content/uploads/fpl-logo.jpg",

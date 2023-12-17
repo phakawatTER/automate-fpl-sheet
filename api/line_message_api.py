@@ -85,8 +85,7 @@ class LineMessageAPI:
             try:
                 return await callback(*args, **kwargs)
             except Exception as e:
-                logger.error(e)
-                self.message_service.send_text_message("Oops...something went wrong",group_id=kwargs["group_id"])
+                self.message_service.send_text_message(f"Oops...something went wrong with error: {e}",group_id=kwargs["group_id"])
         return wrapped_func
     
     async def __handle_update_fpl_table(self,game_week:int,group_id:str):
@@ -96,5 +95,5 @@ class LineMessageAPI:
         
     async def __handle_get_revenues(self,group_id:str):
         self.message_service.send_text_message("Players revenue is being processed. Please wait for a moment",group_id=group_id)
-        players = self.fpl_service.list_players_revenues()
+        players = await self.fpl_service.list_players_revenues()
         self.message_service.send_playeres_revenue_summary(players_revenues=players,group_id=group_id)
