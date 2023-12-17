@@ -97,8 +97,6 @@ class Service:
                 return cache
 
         players = await self.__construct_players_gameweek_data(gameweek)
-        print(players)
-
         current_score_col = START_SCORE_COL + ((gameweek - 1) * 3)
         current_reward_col = current_score_col + 2
 
@@ -201,27 +199,47 @@ class Service:
 
         return False
 
+    @util.time_track(description="Update Players Reward from Sheet")
     def __update_players_reward_from_sheet(
         self,
         players: List[PlayerResultData],
         start_score_row: int,
         current_reward_col: int,
     ):
-        player_ids = [t[0] for t in self.worksheet.get(self.config.player_ids_range)]
-        player_bank_accounts = [
-            t[0] for t in self.worksheet.get(self.config.player_bank_account_range)
+        raw_players_data = [
+            cell.value for cell in self.worksheet.range(self.config.player_data_range)
         ]
+        players_data = [
+            raw_players_data[i : i + 2]
+            for i in range(
+                0,
+                len(
+                    raw_players_data,
+                ),
+                2,
+            )
+        ]
+        cell_notations = []
         # update reward of each players
-        for i, player_id in enumerate(player_ids):
-            bank_account = player_bank_accounts[i]
+        for i, player_data in enumerate(players_data):
+            player_id, bank_account = player_data
             for player in players:
                 if player.player_id == int(player_id):
                     player.bank_account = bank_account
                     current_score_row = start_score_row + i
-                    cv = self.worksheet.cell(current_score_row, current_reward_col)
-                    player.reward = int(cv.value)
+                    cell_notation = util.convert_to_a1_notation(
+                        current_score_row, current_reward_col
+                    )
+                    cell_notations.append(cell_notation)
                     player.sheet_row = current_score_row
-                    break
+
+        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
+        cells = self.worksheet.range(cell_range)
+        for player in players:
+            for row, cell in enumerate(cells, start=start_score_row):
+                if row == player.sheet_row:
+                    cell_value = cell.numeric_value
+                    player.reward = cell_value
 
     def __update_players_shared_reward(
         self, players: List[PlayerResultData], current_reward_col: int
@@ -230,33 +248,51 @@ class Service:
             player for player in players if player.reward_division > 1
         ]
         player_new_reward_map: Dict[int, float] = {}
+        cell_notations: List[str] = []
+        cell_values: List[List[float, 1]] = []
         for player in players_with_shared_reward:
             sum_reward_amount = 0
             for _player in players:
                 if _player.player_id in player.shared_reward_player_ids:
                     sum_reward_amount += _player.reward
             new_reward = sum_reward_amount / player.reward_division
-            self.worksheet.update_cell(player.sheet_row, current_reward_col, new_reward)
+            cell_notation = util.convert_to_a1_notation(
+                player.sheet_row, current_reward_col
+            )
+            cell_notations.append(cell_notation)
+            cell_values.append([new_reward])
             player_new_reward_map[player.player_id] = new_reward
+
+        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
+        self.worksheet.update(cell_range, cell_values)
 
         for player in players_with_shared_reward:
             player.reward = player_new_reward_map[player.player_id]
 
+    @util.time_track(description="Update Players Score in Sheet")
     def __update_player_score_in_sheet(
         self,
         players: List[PlayerResultData],
         start_score_row: int,
         current_score_col: int,
     ):
-        player_ids = [t[0] for t in self.worksheet.get(self.config.player_ids_range)]
+        player_ids = [
+            t.value for t in self.worksheet.range(self.config.player_ids_range)
+        ]
+        cell_notations: List[str] = []
+        cell_values: List[List[float]] = []
         for i, player_id in enumerate(player_ids):
             for player in players:
                 if player.player_id == int(player_id):
                     current_score_row = start_score_row + i
-                    self.worksheet.update_cell(
-                        current_score_row, current_score_col, player.score
+                    cell_notation = util.convert_to_a1_notation(
+                        current_score_row, current_score_col
                     )
+                    cell_notations.append(cell_notation)
+                    cell_values.append([player.score])
                     break
+        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
+        self.worksheet.update(cell_range, cell_values)
 
     def __expand_check_dupl_score(self, players: List[PlayerResultData]):
         player_scores = [p.score for p in players]

@@ -2,7 +2,7 @@ import argparse
 import asyncio
 from oauth2client.service_account import ServiceAccountCredentials
 from loguru import logger
-from services import FPLService
+from services import FPLService, MessageService
 from config import Config
 from adapter import GoogleSheet
 
@@ -44,7 +44,11 @@ async def main():
     google_sheet = GoogleSheet(credential=credential)
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(config=config, google_sheet=google_sheet)
-    await fpl_service.update_fpl_table(gameweek)
+    players = await fpl_service.update_fpl_table(gameweek)
+    message_service = MessageService(config)
+    message_service.send_gameweek_result_message(
+        gameweek, players, group_id="C44a80181a9d0ded2f6c3093adbbd6a8a"
+    )
 
 
 if __name__ == "__main__":

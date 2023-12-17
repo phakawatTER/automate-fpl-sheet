@@ -10,9 +10,7 @@ class Config(object):
         self.cookies: str = config_data.get("cookies")
         self.player_ids_range: str = config_data.get("player_ids_range")
         self.ignore_players: List[str] = config_data.get("ignore_players")
-        self.player_bank_account_range: List[str] = config_data.get(
-            "player_bank_account_range"
-        )
+        self.player_data_range: str = config_data.get("player_data_range")
         self.sheet_url: str = config_data.get("sheet_url")
         self.worksheet_name: str = config_data.get("worksheet_name")
 

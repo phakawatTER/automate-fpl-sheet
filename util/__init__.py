@@ -52,4 +52,25 @@ def is_equal_float(a: float, b: float, precision=6):
     return difference < threshold
 
 
-__all__ = ["time_track", "add_noise", "is_equal_float"]
+def convert_to_a1_notation(row, col):
+    """
+    Convert row and column indices to A1 notation.
+
+    Parameters:
+        row (int): Row index (1-based).
+        col (int): Column index (1-based).
+
+    Returns:
+        str: A1 notation representing the cell.
+    """
+    col_str = ""
+
+    while col > 0:
+        col -= 1
+        col_str = chr(ord("A") + col % 26) + col_str
+        col //= 26
+
+    return f"{col_str}{row}"
+
+
+__all__ = ["time_track", "add_noise", "is_equal_float", "convert_to_a1_notation"]
