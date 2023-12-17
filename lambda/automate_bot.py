@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 from boto3.session import Session
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -12,7 +13,7 @@ from adapter import S3Downloader,GoogleSheet
 from config import Config
 
 
-def handler(_event,_context):
+async def execute():
     sess = Session()
     s3_downloader = S3Downloader(sess,"ds-fpl","/tmp")
 
@@ -24,12 +25,15 @@ def handler(_event,_context):
     google_sheet = GoogleSheet(credential=credential)
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(google_sheet=google_sheet,config=config)
-    gw_status = fpl_service.get_current_gameweek()
-    players = fpl_service.update_fpl_table(gw_status.event)
+    gw_status = await fpl_service.get_current_gameweek()
+    players = await fpl_service.update_fpl_table(gw_status.event)
 
     message_service = MessageService(config=config)
     # NOTE: group_id here should be fetched from database. hardcode it for now
     message_service.send_gameweek_result_message(gw_status.event,players,group_id="C6402ad4c1937733c7db4e3ff7181287c")
     
-if __name__ == "__main__":
-    handler(None,None)
+    return 0
+
+def handler(event,context):
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(execute())

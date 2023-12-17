@@ -1,5 +1,6 @@
 import sys
 import json
+import asyncio
 from typing import Dict,List,Optional
 from datetime import datetime
 
@@ -34,20 +35,26 @@ class Service:
             "gameweek": gameweek
         })
         return response
-
-    @util.time_track(description="Update FPL Table")
-    def update_fpl_table(self,gw:int):
-        if not self.__is_current_gameweek(gameweek=gw):
-            cache = self.__lookup_gameweek_result_cache(gw)   
-            if cache is not None:
-                return cache
     
-        h2h_result = self.fpl_adapter.get_h2h_results(game_week=gw)
-
+    async def __construct_players_gameweek_pick_data(self,player:PlayerResultData,gameweek:int):
+        player_team = await self.fpl_adapter.get_player_team_by_id(player.player_id,game_week=gameweek)
+        for pick in player_team.picks:
+            if pick.is_captain:
+                c = await self.fpl_adapter.get_player_gameweek_info(game_week=gameweek,player_id=pick.element)
+                player.score += c.total_points / 10000 * pick.multiplier
+                player.captain_points = c.total_points * pick.multiplier
+            if pick.is_vice_captain:
+                c = await self.fpl_adapter.get_player_gameweek_info(game_week=gameweek,player_id=pick.element)
+                player.score += c.total_points / 1000000 * pick.multiplier
+                player.vice_captain_points = c.total_points * pick.multiplier
+        return player
+    
+    @util.time_track(description="Construct Players Gameweek Data")
+    async def __construct_players_gameweek_data(self,gameweek:int):
+        h2h_result = await self.fpl_adapter.get_h2h_results(game_week=gameweek)
         player_score:Dict[int, PlayerResultData] = {}
         results = h2h_result.results
 
-        players:List[PlayerResultData] = []
         for result in results:
             # player 1
             p1_name = result.entry_1_name
@@ -62,26 +69,31 @@ class Service:
                 player_score[p1_id] = PlayerResultData(p1_name,p1_id,p1_score)
             if p2_name not in self.config.ignore_players:
                 player_score[p2_id] = PlayerResultData(p2_name,p2_id,p2_score)
-
-        for player_id in tqdm(player_score, total=len(player_score), desc="Processing", unit="item",file=sys.stdout):
-            player_team = self.fpl_adapter.get_player_team_by_id(player_id,game_week=gw)
-            for pick in player_team.picks:
-                if pick.is_captain:
-                    c = self.fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
-                    player_score[player_id].score += c.total_points / 10000 * pick.multiplier
-                    player_score[player_id].captain_points = c.total_points * pick.multiplier
-                if pick.is_vice_captain:
-                    c = self.fpl_adapter.get_player_gameweek_info(game_week=gw,player_id=pick.element)
-                    player_score[player_id].score += c.total_points / 1000000 * pick.multiplier
-                    player_score[player_id].vice_captain_points = c.total_points * pick.multiplier
-            player = player_score[player_id]
-            players.append(player)
+        
+        futures = []                
+        for _,player in player_score.items():
+            player_result_future = self.__construct_players_gameweek_pick_data(player,gameweek=gameweek)
+            futures.append(player_result_future)
+            
+        players:List[PlayerResultData] = await asyncio.gather(*futures)
+        
         # Sorting the list of PlayerResultData instances by the 'score' attribute
         players = sorted(players, key=lambda player: player.score, reverse=True)
         players = self.__expand_check_dupl_score(players=players)
+        return players
+
+    @util.time_track(description="Update FPL Table")
+    async def update_fpl_table(self,gameweek:int):
+        if not self.__is_current_gameweek(gameweek=gameweek):
+            cache = self.__lookup_gameweek_result_cache(gameweek)   
+            if cache is not None:
+                return cache
+
+        players = await self.__construct_players_gameweek_data(gameweek)
+        print(players)
         
 
-        current_score_col = START_SCORE_COL + ( (gw - 1) * 3 )
+        current_score_col = START_SCORE_COL + ( (gameweek - 1) * 3 )
         current_reward_col = current_score_col + 2
         
         # update score in sheet
@@ -90,17 +102,17 @@ class Service:
         self.__update_players_reward_from_sheet(current_reward_col=current_reward_col,players=players,start_score_row=START_SCORE_ROW)
         
         # we should update shared reward only when gameweek is end
-        if self.__should_add_shared_result():
+        if await self.__should_add_shared_result():
             # update player's shared reward (duplicated)
             self.__update_players_shared_reward(current_reward_col=current_reward_col,players=players)
             
         player_cache_items = [player.__dict__ for player in players]
-        self.__put_cache_item(key=f"gameweek-{gw}",item=player_cache_items)
+        self.__put_cache_item(key=f"gameweek-{gameweek}",item=player_cache_items)
         
         return players
 
-    def list_players_revenues(self):
-        standing_result = self.fpl_adapter.get_h2h_league_standing()
+    async def list_players_revenues(self):
+        standing_result = await self.fpl_adapter.get_h2h_league_standing()
         standings = standing_result.standings
         
         worksheet = self.google_sheet.open_worksheet_from_default_sheet(self.config.worksheet_name)
@@ -128,8 +140,8 @@ class Service:
         gameweek_data = json.loads(data)
         return gameweek_data.get("gameweek")
     
-    def get_current_gameweek(self) -> FPLEventStatus:
-        result = self.fpl_adapter.get_gameweek_event_status()
+    async def get_current_gameweek(self) -> FPLEventStatus:
+        result = await self.fpl_adapter.get_gameweek_event_status()
         if len(result.status) == 0:
             raise Exception("gameweek not found")
         gameweek_status = result.status[0]
@@ -147,17 +159,17 @@ class Service:
         return last_match
     
     
-    def list_gameweek_fixtures(self,gameweek:int):
-        gameweek_fixtures = self.fpl_adapter.list_gameweek_fixtures(gameweek=gameweek)
+    async def list_gameweek_fixtures(self,gameweek:int):
+        gameweek_fixtures = await self.fpl_adapter.list_gameweek_fixtures(gameweek=gameweek)
         return gameweek_fixtures
     
     def __is_current_gameweek(self,gameweek:int)->bool:
         current_gameweek = self.get_current_gameweek_from_dynamodb()
         return current_gameweek == gameweek
     
-    def __should_add_shared_result(self):
+    async def __should_add_shared_result(self):
         now_date = datetime.utcnow().date()
-        status_result = self.fpl_adapter.get_gameweek_event_status()
+        status_result = await self.fpl_adapter.get_gameweek_event_status()
         last_gameweek:Optional[FPLEventStatus] = None
         
         for s in status_result.status:

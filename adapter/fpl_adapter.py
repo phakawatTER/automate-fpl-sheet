@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
 from typing import List
-import requests as r
+import httpx
 from models import H2HResponse,FantasyTeam,PlayerData,PlayerHistory,FPLLeagueStandings,FPLEventStatusResponse,MatchFixture
 import util
 
@@ -22,10 +22,15 @@ class FPLAdapter:
         self.cookies = cookies
         self.league_id = league_id
         
+    async def __get_request(self,url:str):
+        async with  httpx.AsyncClient() as client:
+            response = await client.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT,follow_redirects=True)
+            return response
+    
     @util.time_track(description="FPLAdapter.get_gameweek_event_status")
-    def get_gameweek_event_status(self):
+    async def get_gameweek_event_status(self):
         url = urljoin(FPLAdapter.BASE_URL,"/api/event-status")
-        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
         data:dict = response.json()
@@ -33,9 +38,9 @@ class FPLAdapter:
         return FPLEventStatusResponse(status=data.get("status"),leagues=data.get("leagues"))
         
     @util.time_track(description="FPLAdapter.get_h2h_league_standing")
-    def get_h2h_league_standing(self):
+    async def get_h2h_league_standing(self):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/leagues-h2h/{self.league_id}/standings/?page_new_entries=1&page_standings=1")
-        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
         data:dict = response.json()
@@ -47,18 +52,18 @@ class FPLAdapter:
         )
         
     @util.time_track  (description="FPLAdapter.get_h2h_results")
-    def get_h2h_results(self,game_week:int):
+    async def get_h2h_results(self,game_week:int):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/leagues-h2h-matches/league/{self.league_id}/?page=1&event={game_week}")
-        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
         
         return H2HResponse(response=response.json())
     
     @util.time_track(description="FPLAdapter.get_player_gameweek_info")
-    def get_player_gameweek_info(self,game_week:int,player_id:int):
+    async def get_player_gameweek_info(self,game_week:int,player_id:int):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/element-summary/{player_id}")
-        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
         data:dict = response.json()
@@ -72,9 +77,9 @@ class FPLAdapter:
         return history
     
     @util.time_track(description="FPLAdapter.get_player_team_by_id")
-    def get_player_team_by_id(self,player_id:int,game_week:int):
+    async def get_player_team_by_id(self,player_id:int,game_week:int):
         url = urljoin(FPLAdapter.BASE_URL,f"/api/entry/{player_id}/event/{game_week}/picks")
-        response = r.get(url,params={"cookies": self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
 
@@ -87,9 +92,9 @@ class FPLAdapter:
         )
         
     @util.time_track  (description="FPLAdapter.list_gameweek_fixtures")
-    def list_gameweek_fixtures(self,gameweek:int)->List[MatchFixture]:
+    async def list_gameweek_fixtures(self,gameweek:int)->List[MatchFixture]:
         url = urljoin(FPLAdapter.BASE_URL,f"/api/fixtures?event={gameweek}")
-        response = r.get(url=url,params={"cookies":self.cookies},timeout=FPLAdapter.TIMEOUT)
+        response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
             raise FPLError(f"unexpected http status code: {response.status_code} with response data: {response.content}")
         data:List[dict] = response.json()

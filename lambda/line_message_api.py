@@ -33,5 +33,3 @@ def handler(event,context):
     
     app = LineMessageAPI(config=CONFIG,credential=CREDENTIAL).initialize()
     return awsgi.response(app,event,context)
-
-
