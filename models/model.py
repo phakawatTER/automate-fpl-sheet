@@ -6,7 +6,7 @@ class PlayerData:
         self,
         name: str = "",
         player_id: int = 0,
-        score: float = 0,
+        points: float = 0,
         reward_division: int = 1,
         shared_reward_player_ids: List[int] = [],
         reward: float = 0,
@@ -17,7 +17,7 @@ class PlayerData:
     ):
         self.name: str = name
         self.player_id: int = player_id
-        self.score: float = score
+        self.points: float = points
         self.reward_division: int = reward_division
         self.shared_reward_player_ids: List[int] = shared_reward_player_ids
         self.reward: int = reward

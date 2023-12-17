@@ -11,8 +11,8 @@ import util
 
 CACHE_TABLE_NAME = "FPLCacheTable"
 # F4
-START_SCORE_COL = 6
-START_SCORE_ROW = 4
+START_POINT_COL = 6
+START_POINT_ROW = 4
 
 
 class Service:
@@ -44,39 +44,39 @@ class Service:
                 c = await self.fpl_adapter.get_player_gameweek_info(
                     gameweek=gameweek, player_id=pick.element
                 )
-                player.score += c.total_points / 10000 * pick.multiplier
+                player.points += c.total_points / 10000 * pick.multiplier
                 player.captain_points = c.total_points * pick.multiplier
             if pick.is_vice_captain:
                 c = await self.fpl_adapter.get_player_gameweek_info(
                     gameweek=gameweek, player_id=pick.element
                 )
-                player.score += c.total_points / 1000000 * pick.multiplier
+                player.points += c.total_points / 1000000 * pick.multiplier
                 player.vice_captain_points = c.total_points * pick.multiplier
         return player
 
     @util.time_track(description="Construct Players Gameweek Data")
     async def __construct_players_gameweek_data(self, gameweek: int):
         h2h_result = await self.fpl_adapter.get_h2h_results(gameweek=gameweek)
-        player_score: Dict[int, PlayerResultData] = {}
+        players_points_map: Dict[int, PlayerResultData] = {}
         results = h2h_result.results
 
         for result in results:
             # player 1
             p1_name = result.entry_1_name
-            p1_score = util.add_noise(result.entry_1_points)
+            p1_point = util.add_noise(result.entry_1_points)
             p1_id = result.entry_1_entry
             # player 2
             p2_name = result.entry_2_name
-            p2_score = util.add_noise(result.entry_2_points)
+            p2_point = util.add_noise(result.entry_2_points)
             p2_id = result.entry_2_entry
 
             if p1_name not in self.config.ignore_players:
-                player_score[p1_id] = PlayerResultData(p1_name, p1_id, p1_score)
+                players_points_map[p1_id] = PlayerResultData(p1_name, p1_id, p1_point)
             if p2_name not in self.config.ignore_players:
-                player_score[p2_id] = PlayerResultData(p2_name, p2_id, p2_score)
+                players_points_map[p2_id] = PlayerResultData(p2_name, p2_id, p2_point)
 
         futures = []
-        for _, player in player_score.items():
+        for _, player in players_points_map.items():
             player_result_future = self.__construct_players_gameweek_pick_data(
                 player, gameweek=gameweek
             )
@@ -84,9 +84,9 @@ class Service:
 
         players: List[PlayerResultData] = await asyncio.gather(*futures)
 
-        # Sorting the list of PlayerResultData instances by the 'score' attribute
-        players = sorted(players, key=lambda player: player.score, reverse=True)
-        players = self.__expand_check_dupl_score(players=players)
+        # Sorting the list of PlayerResultData instances by the 'point' attribute
+        players = sorted(players, key=lambda player: player.points, reverse=True)
+        players = self.__expand_check_dupl_point(players=players)
         return players
 
     @util.time_track(description="Update FPL Table")
@@ -97,20 +97,20 @@ class Service:
                 return cache
 
         players = await self.__construct_players_gameweek_data(gameweek)
-        current_score_col = START_SCORE_COL + ((gameweek - 1) * 3)
-        current_reward_col = current_score_col + 2
+        current_point_col = START_POINT_COL + ((gameweek - 1) * 3)
+        current_reward_col = current_point_col + 2
 
-        # update score in sheet
-        self.__update_player_score_in_sheet(
-            current_score_col=current_score_col,
-            start_score_row=START_SCORE_ROW,
+        # update point in sheet
+        self.__update_players_points_map_in_sheet(
+            current_point_col=current_point_col,
+            start_point_row=START_POINT_ROW,
             players=players,
         )
         # update players's reward from sheet
         self.__update_players_reward_from_sheet(
             current_reward_col=current_reward_col,
             players=players,
-            start_score_row=START_SCORE_ROW,
+            start_point_row=START_POINT_ROW,
         )
 
         # we should update shared reward only when gameweek is end
@@ -134,12 +134,12 @@ class Service:
         )
 
         player_ids = [x.value for x in worksheet.range(self.config.player_ids_range)]
-        revenue_col = START_SCORE_COL + (37 * 3) + 4
+        revenue_col = START_POINT_COL + (37 * 3) + 4
         players: List[PlayerRevenue] = []
         for i, player_id in enumerate(player_ids):
             for standing in standings:
                 if standing.entry == int(player_id):
-                    sheet_row = START_SCORE_ROW + i
+                    sheet_row = START_POINT_ROW + i
                     cell_value = worksheet.cell(sheet_row, revenue_col).numeric_value
                     player = PlayerRevenue(name=standing.entry_name, revenue=cell_value)
                     players.append(player)
@@ -203,7 +203,7 @@ class Service:
     def __update_players_reward_from_sheet(
         self,
         players: List[PlayerResultData],
-        start_score_row: int,
+        start_point_row: int,
         current_reward_col: int,
     ):
         raw_players_data = [
@@ -226,17 +226,17 @@ class Service:
             for player in players:
                 if player.player_id == int(player_id):
                     player.bank_account = bank_account
-                    current_score_row = start_score_row + i
+                    current_point_row = start_point_row + i
                     cell_notation = util.convert_to_a1_notation(
-                        current_score_row, current_reward_col
+                        current_point_row, current_reward_col
                     )
                     cell_notations.append(cell_notation)
-                    player.sheet_row = current_score_row
+                    player.sheet_row = current_point_row
 
         cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
         cells = self.worksheet.range(cell_range)
         for player in players:
-            for row, cell in enumerate(cells, start=start_score_row):
+            for row, cell in enumerate(cells, start=start_point_row):
                 if row == player.sheet_row:
                     cell_value = cell.numeric_value
                     player.reward = cell_value
@@ -247,6 +247,8 @@ class Service:
         players_with_shared_reward: List[PlayerResultData] = [
             player for player in players if player.reward_division > 1
         ]
+        if len(players_with_shared_reward) == 0:
+            return
         player_new_reward_map: Dict[int, float] = {}
         cell_notations: List[str] = []
         cell_values: List[List[float, 1]] = []
@@ -269,12 +271,12 @@ class Service:
         for player in players_with_shared_reward:
             player.reward = player_new_reward_map[player.player_id]
 
-    @util.time_track(description="Update Players Score in Sheet")
-    def __update_player_score_in_sheet(
+    @util.time_track(description="Update Players point in Sheet")
+    def __update_players_points_map_in_sheet(
         self,
         players: List[PlayerResultData],
-        start_score_row: int,
-        current_score_col: int,
+        start_point_row: int,
+        current_point_col: int,
     ):
         player_ids = [
             t.value for t in self.worksheet.range(self.config.player_ids_range)
@@ -284,23 +286,23 @@ class Service:
         for i, player_id in enumerate(player_ids):
             for player in players:
                 if player.player_id == int(player_id):
-                    current_score_row = start_score_row + i
+                    current_point_row = start_point_row + i
                     cell_notation = util.convert_to_a1_notation(
-                        current_score_row, current_score_col
+                        current_point_row, current_point_col
                     )
                     cell_notations.append(cell_notation)
-                    cell_values.append([player.score])
+                    cell_values.append([player.points])
                     break
         cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
         self.worksheet.update(cell_range, cell_values)
 
-    def __expand_check_dupl_score(self, players: List[PlayerResultData]):
-        player_scores = [p.score for p in players]
+    def __expand_check_dupl_point(self, players: List[PlayerResultData]):
+        players_points_map = [p.points for p in players]
         for i, p in enumerate(players):
-            for j, score in enumerate(player_scores):
+            for j, point in enumerate(players_points_map):
                 if i == j:
                     continue
-                if util.is_equal_float(score, p.score):
+                if util.is_equal_float(point, p.points):
                     p.reward_division += 1
                     p.shared_reward_player_ids.append(players[j].player_id)
 

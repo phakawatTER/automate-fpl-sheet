@@ -100,7 +100,7 @@ class GameweekResultMessage(_CommonMessage):
         top3_icons = ["👑", "🎉", "🌝"]
 
         for i, player in enumerate(self.players):
-            score = math.floor(player.score)
+            point = math.floor(player.points)
             rank_str = str(i + 1)
             rank = ""
             for numb in rank_str:
@@ -132,7 +132,7 @@ class GameweekResultMessage(_CommonMessage):
                             },
                             {
                                 "type": "text",
-                                "text": f"{score}",
+                                "text": f"{point}",
                                 "color": Color.NORMAL,
                                 "size": "md",
                                 "flex": 1,
