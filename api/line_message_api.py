@@ -63,7 +63,7 @@ class LineMessageAPI:
                     if action == "update_fpl_table":
                         extracted_group = match.group(2)
                         game_week = int(extracted_group)
-                        await self.__run_in_error_wrapper(self.handle_update_fpl_table)(game_week=game_week,group_id=source.group_id)
+                        await self.__run_in_error_wrapper(self.__handle_update_fpl_table)(game_week=game_week,group_id=source.group_id)
                     elif action == "get_revenues":
                         extracted_group = match.group(1)
                         await self.__run_in_error_wrapper(self.__handle_get_revenues)(group_id=source.group_id)
@@ -85,7 +85,7 @@ class LineMessageAPI:
                 self.message_service.send_text_message("Oops...something went wrong",group_id=kwargs["group_id"])
         return wrapped_func
     
-    async def handle_update_fpl_table(self,game_week:int,group_id:str):
+    async def __handle_update_fpl_table(self,game_week:int,group_id:str):
         self.message_service.send_text_message(f"Gameweek {game_week} result is being processed. Please wait for a moment",group_id=group_id)
         players = await self.fpl_service.update_fpl_table(gameweek=game_week)
         self.message_service.send_gameweek_result_message(game_week=game_week,players=players,group_id=group_id)
