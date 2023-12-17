@@ -1,14 +1,16 @@
-from typing import List,Optional,Dict,Union
+from typing import List, Optional, Dict, Union
 from datetime import datetime
 
+
 class H2HResponse:
-    def __init__(self, response:dict):
-        self.has_next:bool = response.get("has_next")
-        self.page:int = response.get("page")
-        self.results:List[H2HData] =  [H2HData(d) for d in response.get("results")]
+    def __init__(self, response: dict):
+        self.has_next: bool = response.get("has_next")
+        self.page: int = response.get("page")
+        self.results: List[H2HData] = [H2HData(d) for d in response.get("results")]
+
 
 class H2HData:
-    def __init__(self, data:dict):
+    def __init__(self, data: dict):
         self.id = data.get("id")
         self.entry_1_entry = data.get("entry_1_entry")
         self.entry_1_name = data.get("entry_1_name")
@@ -43,9 +45,22 @@ class FantasyTeam:
         self.entry_history = EntryHistory(**entry_history)
         self.picks = [Pick(**pick) for pick in picks]
 
+
 class EntryHistory:
-    def __init__(self, event, points, total_points, rank, rank_sort, overall_rank, bank, value,
-                 event_transfers, event_transfers_cost, points_on_bench):
+    def __init__(
+        self,
+        event,
+        points,
+        total_points,
+        rank,
+        rank_sort,
+        overall_rank,
+        bank,
+        value,
+        event_transfers,
+        event_transfers_cost,
+        points_on_bench,
+    ):
         self.event = event
         self.points = points
         self.total_points = total_points
@@ -57,6 +72,7 @@ class EntryHistory:
         self.event_transfers = event_transfers
         self.event_transfers_cost = event_transfers_cost
         self.points_on_bench = points_on_bench
+
 
 class Pick:
     def __init__(self, element, position, multiplier, is_captain, is_vice_captain):
@@ -74,9 +90,25 @@ class PlayerData:
         self.history = [PlayerHistory(**h) for h in history]
         self.history_past = [PlayerSeasonHistory(**season) for season in history_past]
 
+
 class Fixture:
-    def __init__(self, id, code, team_h, team_h_score, team_a, team_a_score, event, finished, minutes,
-                 provisional_start_time, kickoff_time, event_name, is_home, difficulty):
+    def __init__(
+        self,
+        id,
+        code,
+        team_h,
+        team_h_score,
+        team_a,
+        team_a_score,
+        event,
+        finished,
+        minutes,
+        provisional_start_time,
+        kickoff_time,
+        event_name,
+        is_home,
+        difficulty,
+    ):
         print(event_name)
         self.id = id
         self.code = code
@@ -93,13 +125,47 @@ class Fixture:
         self.is_home = is_home
         self.difficulty = difficulty
 
+
 class PlayerHistory:
-    def __init__(self, element, fixture, opponent_team, total_points, was_home, kickoff_time,
-                 team_h_score, team_a_score, round, minutes, goals_scored, assists, clean_sheets,
-                 goals_conceded, own_goals, penalties_saved, penalties_missed, yellow_cards, red_cards,
-                 saves, bonus, bps, influence, creativity, threat, ict_index, starts,
-                 expected_goals, expected_assists, expected_goal_involvements,
-                 expected_goals_conceded, value, transfers_balance, selected, transfers_in, transfers_out):
+    def __init__(
+        self,
+        element,
+        fixture,
+        opponent_team,
+        total_points,
+        was_home,
+        kickoff_time,
+        team_h_score,
+        team_a_score,
+        round,
+        minutes,
+        goals_scored,
+        assists,
+        clean_sheets,
+        goals_conceded,
+        own_goals,
+        penalties_saved,
+        penalties_missed,
+        yellow_cards,
+        red_cards,
+        saves,
+        bonus,
+        bps,
+        influence,
+        creativity,
+        threat,
+        ict_index,
+        starts,
+        expected_goals,
+        expected_assists,
+        expected_goal_involvements,
+        expected_goals_conceded,
+        value,
+        transfers_balance,
+        selected,
+        transfers_in,
+        transfers_out,
+    ):
         self.element = element
         self.fixture = fixture
         self.opponent_team = opponent_team
@@ -137,12 +203,38 @@ class PlayerHistory:
         self.transfers_in = transfers_in
         self.transfers_out = transfers_out
 
+
 class PlayerSeasonHistory:
-    def __init__(self, season_name, element_code, start_cost, end_cost, total_points, minutes,
-                 goals_scored, assists, clean_sheets, goals_conceded, own_goals, penalties_saved,
-                 penalties_missed, yellow_cards, red_cards, saves, bonus, bps, influence, creativity,
-                 threat, ict_index, starts, expected_goals, expected_assists,
-                 expected_goal_involvements, expected_goals_conceded):
+    def __init__(
+        self,
+        season_name,
+        element_code,
+        start_cost,
+        end_cost,
+        total_points,
+        minutes,
+        goals_scored,
+        assists,
+        clean_sheets,
+        goals_conceded,
+        own_goals,
+        penalties_saved,
+        penalties_missed,
+        yellow_cards,
+        red_cards,
+        saves,
+        bonus,
+        bps,
+        influence,
+        creativity,
+        threat,
+        ict_index,
+        starts,
+        expected_goals,
+        expected_assists,
+        expected_goal_involvements,
+        expected_goals_conceded,
+    ):
         self.season_name = season_name
         self.element_code = element_code
         self.start_cost = start_cost
@@ -172,18 +264,31 @@ class PlayerSeasonHistory:
         self.expected_goals_conceded = expected_goals_conceded
 
 
-
 class FPLLeagueStandings:
     def __init__(self, league_id: int, league_name: str, standings: List[dict]):
         self.league_id = league_id
         self.league_name = league_name
         self.standings = [FPLTeamStanding(**team_data) for team_data in standings]
 
+
 class FPLTeamStanding:
-    def __init__(self, id: int, division: int, entry: Optional[int], player_name: str,
-                 rank: int, last_rank: int, rank_sort: int, total: int, entry_name: str,
-                 matches_played: int, matches_won: int, matches_drawn: int, matches_lost: int,
-                 points_for: int):
+    def __init__(
+        self,
+        id: int,
+        division: int,
+        entry: Optional[int],
+        player_name: str,
+        rank: int,
+        last_rank: int,
+        rank_sort: int,
+        total: int,
+        entry_name: str,
+        matches_played: int,
+        matches_won: int,
+        matches_drawn: int,
+        matches_lost: int,
+        points_for: int,
+    ):
         self.id = id
         self.division = division
         self.entry = entry
@@ -198,20 +303,26 @@ class FPLTeamStanding:
         self.matches_drawn = matches_drawn
         self.matches_lost = matches_lost
         self.points_for = points_for
-        
+
+
 class FPLEventStatusResponse:
-    def __init__(self,status:List[dict],leagues:bool=False):
-        self.leagues:bool = leagues
-        self.status:List[FPLEventStatus] = [
-            FPLEventStatus(s.get("bonus_added"),s.get("date"),s.get("event"),s.get("points")) for s in status
+    def __init__(self, status: List[dict], leagues: bool = False):
+        self.leagues: bool = leagues
+        self.status: List[FPLEventStatus] = [
+            FPLEventStatus(
+                s.get("bonus_added"), s.get("date"), s.get("event"), s.get("points")
+            )
+            for s in status
         ]
-    
+
+
 class FPLEventStatus:
-    def __init__(self,bonus_added,date,event,points):
-        self.bonus_added:bool = bonus_added
-        self.date = datetime.strptime(date,"%Y-%m-%d").date()
-        self.event:int = event
-        self.points:float = points
+    def __init__(self, bonus_added, date, event, points):
+        self.bonus_added: bool = bonus_added
+        self.date = datetime.strptime(date, "%Y-%m-%d").date()
+        self.event: int = event
+        self.points: float = points
+
 
 class MatchFixture:
     def __init__(self, data):
@@ -220,7 +331,9 @@ class MatchFixture:
         self.finished: bool = data.get("finished")
         self.finished_provisional: bool = data.get("finished_provisional")
         self.id: int = data.get("id")
-        self.kickoff_time: datetime = datetime.strptime(data.get("kickoff_time"), "%Y-%m-%dT%H:%M:%SZ")
+        self.kickoff_time: datetime = datetime.strptime(
+            data.get("kickoff_time"), "%Y-%m-%dT%H:%M:%SZ"
+        )
         self.minutes: int = data.get("minutes")
         self.provisional_start_time: bool = data.get("provisional_start_time")
         self.started: bool = data.get("started")
@@ -228,7 +341,9 @@ class MatchFixture:
         self.team_a_score: int = data.get("team_a_score")
         self.team_h: int = data.get("team_h")
         self.team_h_score: int = data.get("team_h_score")
-        self.stats: List[Dict[str, Union[str, List[Dict[str, Union[int, str]]]]]] = data.get("stats")
+        self.stats: List[
+            Dict[str, Union[str, List[Dict[str, Union[int, str]]]]]
+        ] = data.get("stats")
         self.team_h_difficulty: int = data.get("team_h_difficulty")
         self.team_a_difficulty: int = data.get("team_a_difficulty")
         self.pulse_id: int = data.get("pulse_id")

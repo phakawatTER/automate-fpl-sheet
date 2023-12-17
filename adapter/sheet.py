@@ -2,17 +2,17 @@ import gspread
 from gspread import Spreadsheet
 from oauth2client.service_account import ServiceAccountCredentials
 
+
 class GoogleSheet:
-    def __init__(self,credential:ServiceAccountCredentials):
+    def __init__(self, credential: ServiceAccountCredentials):
         self.gc = gspread.authorize(credential)
-        self.spreadsheet:Spreadsheet = None
-        
-    def open_sheet_by_url(self,spreadsheet_name:str):
+        self.spreadsheet: Spreadsheet = None
+
+    def open_sheet_by_url(self, spreadsheet_name: str):
         spreadsheet = self.gc.open_by_url(spreadsheet_name)
         self.spreadsheet = spreadsheet
         return self
-    
-    def open_worksheet_from_default_sheet(self,name:str):
+
+    def open_worksheet_from_default_sheet(self, name: str):
         worksheet = self.spreadsheet.worksheet(name)
         return worksheet
-    

@@ -5,7 +5,7 @@ import functools
 from loguru import logger
 
 
-def time_track(func=None, description: str=""):
+def time_track(func=None, description: str = ""):
     def decorator(func):
         @functools.wraps(func)
         def inner_sync(*args, **kwargs):
@@ -39,16 +39,17 @@ def time_track(func=None, description: str=""):
 
     return decorator
 
+
 def add_noise(value, noise_factor=0.0000000099):
     noise = random.uniform(0, noise_factor)
     noisy_value = value + noise
     return noisy_value
 
-def is_equal_float(a:float,b:float,precision=6):
+
+def is_equal_float(a: float, b: float, precision=6):
     difference = abs(a - b)
-    threshold = 10 ** -precision
+    threshold = 10**-precision
     return difference < threshold
 
 
-
-__all__ = ["time_track","add_noise","is_equal_float"]
+__all__ = ["time_track", "add_noise", "is_equal_float"]

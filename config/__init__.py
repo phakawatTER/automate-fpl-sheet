@@ -3,7 +3,4 @@ from .config import Config
 
 TIMEZONE = gettz("Asia/Bangkok")
 
-__all__ = [
-    "Config",
-    "TIMEZONE"
-]
+__all__ = ["Config", "TIMEZONE"]
