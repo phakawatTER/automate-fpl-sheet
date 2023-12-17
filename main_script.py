@@ -1,5 +1,5 @@
 import argparse
-import json
+import asyncio
 from oauth2client.service_account import ServiceAccountCredentials
 from loguru import logger
 from services import FPLService
@@ -13,7 +13,7 @@ class InvalidInputException(Exception):
         super().__init__(message)
         self.message = message
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Process the gameweek integer argument.")
     
     # Add the argument for gameweek
@@ -38,7 +38,7 @@ def main():
     google_sheet = GoogleSheet(credential=credential)
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(config=config,google_sheet=google_sheet)
-    fpl_service.update_fpl_table(gameweek)
+    await fpl_service.update_fpl_table(gameweek)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())    

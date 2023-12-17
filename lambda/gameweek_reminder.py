@@ -1,5 +1,6 @@
 import os
 import sys
+import asyncio
 from datetime import timedelta,datetime
 
 from boto3.session import Session
@@ -16,7 +17,7 @@ from models import MatchFixture
 
 
 
-def handler(_event,_context):
+async def execute():
     sess = Session()
     s3_downloader = S3Downloader(sess,"ds-fpl","/tmp")
 
@@ -28,9 +29,9 @@ def handler(_event,_context):
     google_sheet = GoogleSheet(credential=credential)
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(google_sheet=google_sheet,config=config)
-    gw_status = fpl_service.get_current_gameweek()
+    gw_status = await fpl_service.get_current_gameweek()
     current_gameweek = gw_status.event
-    current_gameweek_fixtures = fpl_service.list_gameweek_fixtures(gameweek=current_gameweek)
+    current_gameweek_fixtures = await fpl_service.list_gameweek_fixtures(gameweek=current_gameweek)
     earliest_match:MatchFixture = None
     for fixture in current_gameweek_fixtures:
         if earliest_match is None:
@@ -48,7 +49,8 @@ def handler(_event,_context):
         message_service = MessageService(config)
         # NOTE: group_id should be fetched from database
         message_service.send_gameweek_reminder_message(game_week=current_gameweek,group_id="C6402ad4c1937733c7db4e3ff7181287c")
-        fpl_service.update_gameweek(gameweek=current_gameweek)
+        await fpl_service.update_gameweek(gameweek=current_gameweek)
         
-if __name__ == "__main__":
-    handler(None,None)
+def handler(event,context):
+    loop = asyncio.get_event_loop()
+    return loop.run_until_complete(execute())

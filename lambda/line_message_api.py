@@ -1,6 +1,7 @@
 # pylint: disable=wrong-import-position
 import sys
 import os
+import asyncio
 import awsgi
 from boto3.session import Session
 from oauth2client.service_account import ServiceAccountCredentials
@@ -33,5 +34,3 @@ def handler(event,context):
     
     app = LineMessageAPI(config=CONFIG,credential=CREDENTIAL).initialize()
     return awsgi.response(app,event,context)
-
-
