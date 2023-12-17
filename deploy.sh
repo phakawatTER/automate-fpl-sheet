@@ -19,6 +19,9 @@ random_string=$(date +'%Y%m%d%H%M%S')
 echo "$random_string" > version.txt
 mv version.txt deployment_package
 
+aws s3 cp config.json s3://ds-fpl/config.json
+aws s3 cp service_account.json s3://ds-fpl/service_account.json
+
 sam package --debug --template template.yml  --s3-bucket ds-fpl \
 --s3-prefix "cloudformation-package" \
 --output-template-file template-export.yml

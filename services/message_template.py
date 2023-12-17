@@ -2,7 +2,26 @@ import math
 from typing import List
 from models import PlayerResultData, PlayerRevenue
 
-COLORS = {"SUCCESS": "#62d271", "DANGER": "#EF4040", "NORMAL": "#aaaaaa"}
+
+class Color:
+    TOPIC = "#ffffff"
+    SUCCESS = "#62d271"
+    DANGER = "#EF4040"
+    NORMAL = "#aaaaaa"
+
+
+EMOJI_NUMBER_MAP = {
+    "0": "0️⃣",
+    "1": "1️⃣",
+    "2": "2️⃣",
+    "3": "3️⃣",
+    "4": "4️⃣",
+    "5": "5️⃣",
+    "6": "6️⃣",
+    "7": "7️⃣",
+    "8": "8️⃣",
+    "9": "9️⃣",
+}
 
 
 class _CommonMessage:
@@ -12,11 +31,17 @@ class _CommonMessage:
             "size": "giga",
             "hero": {
                 "type": "image",
-                "url": "https://www.merlinpcbgroup.com/wp-content/uploads/fpl-logo.jpg",
+                "url": "https://thefirmsport.files.wordpress.com/2021/04/fpl_statement_graphic.png",
                 "size": "full",
                 "aspectRatio": "20:13",
                 "aspectMode": "cover",
                 "action": {"type": "uri", "uri": sheet_url},
+            },
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [],
+                "backgroundColor": "#393646",
             },
         }
 
@@ -31,26 +56,24 @@ class GameweekReminderMessage(_CommonMessage):
 
     def build(self):
         message = self._get_container()
-        body = {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                {
-                    "type": "text",
-                    "text": f"GAMEWEEK {self.gameweek} IS COMING",
-                    "weight": "bold",
-                    "size": "xl",
-                },
-                {
-                    "type": "text",
-                    "text": "อย่าลืมจัดตัวกันนะจ๊ะ",
-                    "weight": "regular",
-                    "margin": "xl",
-                    "size": "md",
-                },
-            ],
-        }
-        message["body"] = body
+
+        message["body"]["contents"] = [
+            {
+                "type": "text",
+                "text": f"GAMEWEEK {self.gameweek} IS COMING",
+                "weight": "bold",
+                "size": "xxl",
+                "color": Color.TOPIC,
+            },
+            {
+                "type": "text",
+                "text": "อย่าลืมจัดตัวกันนะจ๊ะ",
+                "weight": "regular",
+                "margin": "xl",
+                "size": "md",
+                "color": Color.NORMAL,
+            },
+        ]
 
         return message
 
@@ -64,14 +87,13 @@ class GameweekResultMessage(_CommonMessage):
     def build(self):
         message = self._get_container()
 
-        body = {"type": "box", "layout": "vertical", "contents": []}
-
-        body["contents"].append(
+        message["body"]["contents"].append(
             {
                 "type": "text",
                 "text": f"GAMEWEEK {self.gameweek} RESULT",
                 "weight": "bold",
-                "size": "xl",
+                "size": "xxl",
+                "color": Color.TOPIC,
             }
         )
 
@@ -79,8 +101,11 @@ class GameweekResultMessage(_CommonMessage):
 
         for i, player in enumerate(self.players):
             score = math.floor(player.score)
-            rank = i + 1
-            player_name = f"#{rank} {player.name}"
+            rank_str = str(i + 1)
+            rank = ""
+            for numb in rank_str:
+                rank += EMOJI_NUMBER_MAP[numb]
+            player_name = f"{rank} {player.name}"
             is_top_3 = i <= 2
             if is_top_3:
                 player_name += f" {top3_icons[i]}"
@@ -100,16 +125,16 @@ class GameweekResultMessage(_CommonMessage):
                             {
                                 "type": "text",
                                 "text": player_name,
-                                "color": COLORS["NORMAL"],
-                                "size": "sm",
+                                "color": Color.NORMAL,
+                                "size": "md",
                                 "flex": 5,
                                 "weight": "bold",
                             },
                             {
                                 "type": "text",
                                 "text": f"{score}",
-                                "color": COLORS["NORMAL"],
-                                "size": "sm",
+                                "color": Color.NORMAL,
+                                "size": "md",
                                 "flex": 1,
                                 "weight": "bold",
                                 "align": "end",
@@ -127,16 +152,16 @@ class GameweekResultMessage(_CommonMessage):
                         {
                             "type": "text",
                             "text": player.bank_account,
-                            "color": COLORS["NORMAL"],
-                            "size": "xs",
+                            "color": Color.NORMAL,
+                            "size": "sm",
                             "flex": 5,
                         },
                         {
                             "type": "text",
                             "text": f"+{player.reward}฿",
-                            "color": COLORS["SUCCESS"],
+                            "color": Color.SUCCESS,
                             "weight": "bold",
-                            "size": "xs",
+                            "size": "sm",
                             "flex": 1,
                             "align": "end",
                         },
@@ -152,9 +177,9 @@ class GameweekResultMessage(_CommonMessage):
                         {
                             "type": "text",
                             "text": f"{player.reward}฿",
-                            "color": COLORS["DANGER"],
+                            "color": Color.DANGER,
                             "weight": "bold",
-                            "size": "xs",
+                            "size": "sm",
                             "flex": 1,
                             "align": "end",
                         }
@@ -166,9 +191,7 @@ class GameweekResultMessage(_CommonMessage):
                 # add separator
                 content["contents"].append({"type": "separator"})
 
-            body["contents"].append(content)
-
-        message["body"] = body
+            message["body"]["contents"].append(content)
 
         return message
 
@@ -181,18 +204,15 @@ class RevenueMessage(_CommonMessage):
     def build(self):
         message = self._get_container()
 
-        body = {"type": "box", "layout": "vertical", "contents": []}
-
-        body["contents"].append(
+        message["body"]["contents"].append(
             {
                 "type": "text",
                 "text": "PLAYERS TOTAL REVENUE",
                 "weight": "bold",
-                "size": "xl",
+                "size": "xxl",
+                "color": Color.TOPIC,
             }
         )
-
-        message["body"] = body
 
         top3_icons = ["👑", "🎉", "🌝"]
 
@@ -202,6 +222,10 @@ class RevenueMessage(_CommonMessage):
             is_top_3 = i <= 2
             if is_top_3:
                 name += f" {top3_icons[i]}"
+            rank_str = str(i + 1)
+            rank = ""
+            for numb in rank_str:
+                rank += EMOJI_NUMBER_MAP[numb]
 
             content = {
                 "type": "box",
@@ -216,21 +240,21 @@ class RevenueMessage(_CommonMessage):
                         "contents": [
                             {
                                 "type": "text",
-                                "text": name,
-                                "color": COLORS["NORMAL"],
-                                "size": "sm",
+                                "text": f"{rank} {name}",
+                                "color": Color.NORMAL,
+                                "size": "md",
                                 "flex": 5,
                                 "weight": "bold",
                             },
                             {
                                 "type": "text",
                                 "text": f"{revenue}฿",
-                                "color": COLORS["SUCCESS"]
+                                "color": Color.SUCCESS
                                 if revenue > 0
-                                else COLORS["DANGER"]
+                                else Color.DANGER
                                 if revenue < 0
-                                else COLORS["NORMAL"],
-                                "size": "sm",
+                                else Color.NORMAL,
+                                "size": "md",
                                 "flex": 1,
                                 "weight": "bold",
                                 "align": "end",
@@ -243,6 +267,6 @@ class RevenueMessage(_CommonMessage):
             if i < len(self.players_revenues) - 1:
                 content["contents"].append({"type": "separator"})
 
-            body["contents"].append(content)
+            message["body"]["contents"].append(content)
 
         return message

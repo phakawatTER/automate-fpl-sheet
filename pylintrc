@@ -1,2 +1,2 @@
 [MESSAGES CONTROL]
-disable=wrong-import-position,broad-exception-raised,trailing-whitespace,line-too-long,unused-argument,broad-exception-caught,global-statement
+disable=wrong-import-position,broad-exception-raised,trailing-whitespace,line-too-long,unused-argument,broad-exception-caught,global-statement,too-few-public-methods
