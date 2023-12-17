@@ -1,4 +1,5 @@
 import re
+import asyncio
 from flask import Flask, request, abort
 from oauth2client.service_account import ServiceAccountCredentials
 from linebot import WebhookHandler
@@ -49,24 +50,27 @@ class LineMessageAPI:
             }
 
         @handler.add(MessageEvent, message=TextMessage)
-        async def handle_message(event:MessageEvent):
+        def handle_message(event:MessageEvent):
             source:SourceGroup = event.source
             message:TextMessage = event.message
             
             text:str = message.text
-            print(LineMessageAPI.PATTERN_ACTIONS)
             for pattern,action in LineMessageAPI.PATTERN_ACTIONS.items():
-                print(pattern,action)
                 match = re.search(pattern, text.lower())
-                print("math",match)
                 if match:
+                    logger.success("math",match)
+                    loop = asyncio.new_event_loop()
                     if action == "update_fpl_table":
                         extracted_group = match.group(2)
                         game_week = int(extracted_group)
-                        await self.__run_in_error_wrapper(self.__handle_update_fpl_table)(game_week=game_week,group_id=source.group_id)
+                        loop.run_until_complete(
+                            self.__run_in_error_wrapper(self.__handle_update_fpl_table)(game_week=game_week,group_id=source.group_id)
+                        )
                     elif action == "get_revenues":
                         extracted_group = match.group(1)
-                        await self.__run_in_error_wrapper(self.__handle_get_revenues)(group_id=source.group_id)
+                        loop.run_until_complete(
+                            self.__run_in_error_wrapper(self.__handle_get_revenues)(group_id=source.group_id)
+                        )
                     else:
                         pass
 
