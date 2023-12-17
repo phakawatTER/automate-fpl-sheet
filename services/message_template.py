@@ -39,7 +39,7 @@ class GameweekReminderMessage(_CommonMessage):
                     "type": "text",
                     "text": f"GAMEWEEK {self.gameweek} IS COMING",
                     "weight": "bold",
-                    "size": "md",
+                    "size": "xl",
                 },
                 {
                     "type": "text",
@@ -188,7 +188,7 @@ class RevenueMessage(_CommonMessage):
                 "type": "text",
                 "text": "PLAYERS TOTAL REVENUE",
                 "weight": "bold",
-                "size": "md",
+                "size": "xl",
             }
         )
 

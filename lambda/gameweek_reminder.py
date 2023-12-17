@@ -52,7 +52,7 @@ async def execute():
         message_service.send_gameweek_reminder_message(
             gameweek=current_gameweek, group_id="C6402ad4c1937733c7db4e3ff7181287c"
         )
-        await fpl_service.update_gameweek(gameweek=current_gameweek)
+        fpl_service.update_gameweek(gameweek=current_gameweek)
 
 
 def handler(event, context):
