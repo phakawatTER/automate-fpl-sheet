@@ -90,12 +90,12 @@ class LineMessageAPI:
                                 source.group_id,
                             )
                             abort(403)
-                        for gw in range(start_gw, end_gw + 1):
-                            loop.run_until_complete(
-                                self.__run_in_error_wrapper(
-                                    self.__handle_update_fpl_table
-                                )(gameweek=gw, group_id=source.group_id)
+
+                        loop.run_until_complete(
+                            self.__handle_batch_update_fpl_table(
+                                start_gw, end_gw, source.group_id
                             )
+                        )
 
                     elif action == MessageHandlerActionGroup.GET_PLAYERS_REVENUES:
                         extracted_group = match.group(1)
@@ -124,14 +124,59 @@ class LineMessageAPI:
 
         return wrapped_func
 
+    async def __handle_batch_update_fpl_table(
+        self, from_gameweek: int, to_gameweek: int, group_id
+    ):
+        event_status = await self.fpl_service.get_gameweek_event_status(
+            gameweek=to_gameweek
+        )
+        current_gameweek_event = (
+            None if event_status is None else event_status.status[0].event
+        )
+
+        gameweek_players = []
+        event_statuses = []
+        gameweeks = []
+        for gameweek in range(from_gameweek, to_gameweek + 1):
+            players = await self.fpl_service.update_fpl_table(gameweek)
+            gameweek_players.append(players)
+            event_statuses.append(
+                event_status
+                if current_gameweek_event is not None
+                and current_gameweek_event == gameweek
+                else None
+            )
+            gameweeks.append(gameweek)
+
+        step_size = 8
+        for i in range(0, len(gameweek_players), step_size):
+            j = (
+                i + step_size
+                if i + step_size <= len(gameweek_players) - 1
+                else len(gameweek_players)
+            )
+            _gameweek_players = gameweek_players[i:j]
+            _event_statuses = event_statuses[i:j]
+            _gameweeks = gameweeks[i:j]
+            self.message_service.send_carousel_gameweek_results_message(
+                gameweek_players=_gameweek_players,
+                event_statuses=_event_statuses,
+                gameweeks=_gameweeks,
+                group_id=group_id,
+            )
+
     async def __handle_update_fpl_table(self, gameweek: int, group_id: str):
         self.message_service.send_text_message(
             f"Gameweek {gameweek} result is being processed. Please wait for a moment",
             group_id=group_id,
         )
         players = await self.fpl_service.update_fpl_table(gameweek=gameweek)
+        event_status = await self.fpl_service.get_gameweek_event_status(gameweek)
         self.message_service.send_gameweek_result_message(
-            gameweek=gameweek, players=players, group_id=group_id
+            gameweek=gameweek,
+            players=players,
+            group_id=group_id,
+            event_status=event_status,
         )
 
     async def __handle_get_revenues(self, group_id: str):

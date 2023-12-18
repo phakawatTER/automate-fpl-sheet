@@ -1,6 +1,6 @@
 import math
-from typing import List
-from models import PlayerResultData, PlayerRevenue
+from typing import List, Optional
+from models import PlayerResultData, PlayerRevenue, FPLEventStatusResponse
 
 
 class Color:
@@ -78,11 +78,30 @@ class GameweekReminderMessage(_CommonMessage):
         return message
 
 
+class GameweekResultCarouselMessage:
+    def __init__(self, messages):
+        self.messages = messages
+
+    def build(self):
+        message = {
+            "type": "carousel",
+            "contents": self.messages,
+        }
+        return message
+
+
 class GameweekResultMessage(_CommonMessage):
-    def __init__(self, players: List[PlayerResultData], gameweek: int, sheet_url: str):
+    def __init__(
+        self,
+        players: List[PlayerResultData],
+        gameweek: int,
+        sheet_url: str,
+        event_status: Optional[FPLEventStatusResponse] = None,
+    ):
         super().__init__(sheet_url=sheet_url)
         self.players = players
         self.gameweek = gameweek
+        self.event_status = event_status
 
     def build(self):
         message = self._get_container()
@@ -90,12 +109,39 @@ class GameweekResultMessage(_CommonMessage):
         message["body"]["contents"].append(
             {
                 "type": "text",
-                "text": f"GAMEWEEK {self.gameweek} RESULT",
+                "text": f"GAMEWEEK {self.gameweek}",
                 "weight": "bold",
                 "size": "xxl",
                 "color": Color.TOPIC,
-            }
+            },
         )
+
+        if self.event_status is not None:
+            message["body"]["contents"].append(
+                {
+                    "type": "box",
+                    "layout": "horizontal",
+                    "margin": "lg",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "Status: ",
+                            "color": Color.TOPIC,
+                            "weight": "bold",
+                            "size": "xl",
+                            "flex": 0,
+                        },
+                        {
+                            "type": "text",
+                            "text": self.event_status.leagues,
+                            "color": Color.SUCCESS,
+                            "size": "xl",
+                            "margin": "sm",
+                            "flex": 0,
+                        },
+                    ],
+                },
+            )
 
         top3_icons = ["👑", "🎉", "🌝"]
 
@@ -114,7 +160,7 @@ class GameweekResultMessage(_CommonMessage):
             content = {
                 "type": "box",
                 "layout": "vertical",
-                "margin": "lg",
+                "margin": "xl",
                 "spacing": "sm",
                 "contents": [
                     {
@@ -230,7 +276,7 @@ class RevenueMessage(_CommonMessage):
             content = {
                 "type": "box",
                 "layout": "vertical",
-                "margin": "lg",
+                "margin": "xl",
                 "spacing": "sm",
                 "contents": [
                     {

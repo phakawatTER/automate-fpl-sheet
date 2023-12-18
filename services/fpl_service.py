@@ -5,7 +5,13 @@ from datetime import datetime
 from loguru import logger
 from adapter import FPLAdapter, GoogleSheet, DynamoDB
 from config import Config
-from models import PlayerResultData, PlayerRevenue, FPLEventStatus, MatchFixture
+from models import (
+    PlayerResultData,
+    PlayerRevenue,
+    FPLEventStatus,
+    MatchFixture,
+    FPLEventStatusResponse,
+)
 import util
 
 
@@ -182,6 +188,15 @@ class Service:
         current_gameweek = self.get_current_gameweek_from_dynamodb()
         return current_gameweek == gameweek
 
+    async def get_gameweek_event_status(
+        self, gameweek: int
+    ) -> Optional[FPLEventStatusResponse]:
+        status = await self.fpl_adapter.get_gameweek_event_status()
+        for s in status.status:
+            if gameweek != s.event:
+                return None
+        return status
+
     async def __should_add_shared_result(self):
         now_date = datetime.utcnow().date()
         status_result = await self.fpl_adapter.get_gameweek_event_status()
@@ -194,7 +209,11 @@ class Service:
                 last_gameweek = s
 
         assert last_gameweek is not None
-        if now_date >= last_gameweek.date and last_gameweek.bonus_added:
+        if (
+            now_date >= last_gameweek.date
+            and last_gameweek.bonus_added
+            and status_result.leagues == "Updated"
+        ):
             return True
 
         return False
