@@ -1,349 +1,222 @@
+from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Union
-from datetime import datetime
+from datetime import datetime, date
 
 
+@dataclass
 class H2HResponse:
-    def __init__(self, response: dict):
-        self.has_next: bool = response.get("has_next")
-        self.page: int = response.get("page")
-        self.results: List[H2HData] = [H2HData(d) for d in response.get("results")]
+    has_next: bool
+    page: int
+    results: List["H2HData"]
 
 
+@dataclass
 class H2HData:
-    def __init__(self, data: dict):
-        self.id = data.get("id")
-        self.entry_1_entry = data.get("entry_1_entry")
-        self.entry_1_name = data.get("entry_1_name")
-        self.entry_1_player_name = data.get("entry_1_player_name")
-        self.entry_1_points = data.get("entry_1_points")
-        self.entry_1_win = data.get("entry_1_win")
-        self.entry_1_draw = data.get("entry_1_draw")
-        self.entry_1_loss = data.get("entry_1_loss")
-        self.entry_1_total = data.get("entry_1_total")
-        self.entry_2_entry = data.get("entry_2_entry")
-        self.entry_2_name = data.get("entry_2_name")
-        self.entry_2_player_name = data.get("entry_2_player_name")
-        self.entry_2_points = data.get("entry_2_points")
-        self.entry_2_win = data.get("entry_2_win")
-        self.entry_2_draw = data.get("entry_2_draw")
-        self.entry_2_loss = data.get("entry_2_loss")
-        self.entry_2_total = data.get("entry_2_total")
-        self.is_knockout = data.get("is_knockout")
-        self.league = data.get("league")
-        self.winner = data.get("winner")
-        self.seed_value = data.get("seed_value")
-        self.event = data.get("event")
-        self.tiebreak = data.get("tiebreak")
-        self.is_bye = data.get("is_bye")
-        self.knockout_name = data.get("knockout_name")
+    id: int
+    entry_1_entry: int
+    entry_1_name: str
+    entry_1_player_name: str
+    entry_1_points: int
+    entry_1_win: int
+    entry_1_draw: int
+    entry_1_loss: int
+    entry_1_total: int
+    entry_2_entry: int
+    entry_2_name: str
+    entry_2_player_name: str
+    entry_2_points: int
+    entry_2_win: int
+    entry_2_draw: int
+    entry_2_loss: int
+    entry_2_total: int
+    is_knockout: bool
+    league: str
+    winner: str
+    seed_value: int
+    event: str
+    tiebreak: str
+    is_bye: bool
+    knockout_name: str
 
 
+@dataclass
 class FantasyTeam:
-    def __init__(self, active_chip, automatic_subs, entry_history, picks):
-        self.active_chip = active_chip
-        self.automatic_subs = automatic_subs
-        self.entry_history = EntryHistory(**entry_history)
-        self.picks = [Pick(**pick) for pick in picks]
+    active_chip: str
+    automatic_subs: List[int]
+    entry_history: "EntryHistory"
+    picks: List["Pick"]
 
 
+@dataclass
 class EntryHistory:
-    def __init__(
-        self,
-        event,
-        points,
-        total_points,
-        rank,
-        rank_sort,
-        overall_rank,
-        bank,
-        value,
-        event_transfers,
-        event_transfers_cost,
-        points_on_bench,
-    ):
-        self.event = event
-        self.points = points
-        self.total_points = total_points
-        self.rank = rank
-        self.rank_sort = rank_sort
-        self.overall_rank = overall_rank
-        self.bank = bank
-        self.value = value
-        self.event_transfers = event_transfers
-        self.event_transfers_cost = event_transfers_cost
-        self.points_on_bench = points_on_bench
+    event: int
+    points: int
+    total_points: int
+    rank: int
+    rank_sort: int
+    overall_rank: int
+    bank: int
+    value: int
+    event_transfers: int
+    event_transfers_cost: int
+    points_on_bench: int
 
 
+@dataclass
 class Pick:
-    def __init__(self, element, position, multiplier, is_captain, is_vice_captain):
-        self.element = element
-        self.position = position
-        self.multiplier = multiplier
-        self.is_captain = is_captain
-        self.is_vice_captain = is_vice_captain
+    element: int
+    position: int
+    multiplier: int
+    is_captain: bool
+    is_vice_captain: bool
 
 
+@dataclass
 class PlayerData:
-    def __init__(self, fixtures, history, history_past):
-        # TODO: need to fix error when initialize fixtures ignroe this for now as we dont use it
-        # self.fixtures = [Fixture(**fixture) for fixture in fixtures]
-        self.history = [PlayerHistory(**h) for h in history]
-        self.history_past = [PlayerSeasonHistory(**season) for season in history_past]
+    history: List["PlayerHistory"]
+    history_past: List["PlayerSeasonHistory"]
 
 
-class Fixture:
-    def __init__(
-        self,
-        id,
-        code,
-        team_h,
-        team_h_score,
-        team_a,
-        team_a_score,
-        event,
-        finished,
-        minutes,
-        provisional_start_time,
-        kickoff_time,
-        event_name,
-        is_home,
-        difficulty,
-    ):
-        print(event_name)
-        self.id = id
-        self.code = code
-        self.team_h = team_h
-        self.team_h_score = team_h_score
-        self.team_a = team_a
-        self.team_a_score = team_a_score
-        self.event = event
-        self.finished = finished
-        self.minutes = minutes
-        self.provisional_start_time = provisional_start_time
-        self.kickoff_time = kickoff_time
-        self.event_name = event_name
-        self.is_home = is_home
-        self.difficulty = difficulty
-
-
+@dataclass
 class PlayerHistory:
-    def __init__(
-        self,
-        element,
-        fixture,
-        opponent_team,
-        total_points,
-        was_home,
-        kickoff_time,
-        team_h_score,
-        team_a_score,
-        round,
-        minutes,
-        goals_scored,
-        assists,
-        clean_sheets,
-        goals_conceded,
-        own_goals,
-        penalties_saved,
-        penalties_missed,
-        yellow_cards,
-        red_cards,
-        saves,
-        bonus,
-        bps,
-        influence,
-        creativity,
-        threat,
-        ict_index,
-        starts,
-        expected_goals,
-        expected_assists,
-        expected_goal_involvements,
-        expected_goals_conceded,
-        value,
-        transfers_balance,
-        selected,
-        transfers_in,
-        transfers_out,
-    ):
-        self.element = element
-        self.fixture = fixture
-        self.opponent_team = opponent_team
-        self.total_points = total_points
-        self.was_home = was_home
-        self.kickoff_time = kickoff_time
-        self.team_h_score = team_h_score
-        self.team_a_score = team_a_score
-        self.round = round
-        self.minutes = minutes
-        self.goals_scored = goals_scored
-        self.assists = assists
-        self.clean_sheets = clean_sheets
-        self.goals_conceded = goals_conceded
-        self.own_goals = own_goals
-        self.penalties_saved = penalties_saved
-        self.penalties_missed = penalties_missed
-        self.yellow_cards = yellow_cards
-        self.red_cards = red_cards
-        self.saves = saves
-        self.bonus = bonus
-        self.bps = bps
-        self.influence = influence
-        self.creativity = creativity
-        self.threat = threat
-        self.ict_index = ict_index
-        self.starts = starts
-        self.expected_goals = expected_goals
-        self.expected_assists = expected_assists
-        self.expected_goal_involvements = expected_goal_involvements
-        self.expected_goals_conceded = expected_goals_conceded
-        self.value = value
-        self.transfers_balance = transfers_balance
-        self.selected = selected
-        self.transfers_in = transfers_in
-        self.transfers_out = transfers_out
+    element: int
+    fixture: int
+    opponent_team: int
+    total_points: int
+    was_home: bool
+    kickoff_time: str
+    team_h_score: int
+    team_a_score: int
+    round: int
+    minutes: int
+    goals_scored: int
+    assists: int
+    clean_sheets: int
+    goals_conceded: int
+    own_goals: int
+    penalties_saved: int
+    penalties_missed: int
+    yellow_cards: int
+    red_cards: int
+    saves: int
+    bonus: int
+    bps: int
+    influence: float
+    creativity: float
+    threat: float
+    ict_index: float
+    starts: int
+    expected_goals: float
+    expected_assists: float
+    expected_goal_involvements: float
+    expected_goals_conceded: float
+    value: float
+    transfers_balance: int
+    selected: int
+    transfers_in: int
+    transfers_out: int
 
 
+@dataclass
 class PlayerSeasonHistory:
-    def __init__(
-        self,
-        season_name,
-        element_code,
-        start_cost,
-        end_cost,
-        total_points,
-        minutes,
-        goals_scored,
-        assists,
-        clean_sheets,
-        goals_conceded,
-        own_goals,
-        penalties_saved,
-        penalties_missed,
-        yellow_cards,
-        red_cards,
-        saves,
-        bonus,
-        bps,
-        influence,
-        creativity,
-        threat,
-        ict_index,
-        starts,
-        expected_goals,
-        expected_assists,
-        expected_goal_involvements,
-        expected_goals_conceded,
-    ):
-        self.season_name = season_name
-        self.element_code = element_code
-        self.start_cost = start_cost
-        self.end_cost = end_cost
-        self.total_points = total_points
-        self.minutes = minutes
-        self.goals_scored = goals_scored
-        self.assists = assists
-        self.clean_sheets = clean_sheets
-        self.goals_conceded = goals_conceded
-        self.own_goals = own_goals
-        self.penalties_saved = penalties_saved
-        self.penalties_missed = penalties_missed
-        self.yellow_cards = yellow_cards
-        self.red_cards = red_cards
-        self.saves = saves
-        self.bonus = bonus
-        self.bps = bps
-        self.influence = influence
-        self.creativity = creativity
-        self.threat = threat
-        self.ict_index = ict_index
-        self.starts = starts
-        self.expected_goals = expected_goals
-        self.expected_assists = expected_assists
-        self.expected_goal_involvements = expected_goal_involvements
-        self.expected_goals_conceded = expected_goals_conceded
+    season_name: str
+    element_code: int
+    start_cost: float
+    end_cost: float
+    total_points: int
+    minutes: int
+    goals_scored: int
+    assists: int
+    clean_sheets: int
+    goals_conceded: int
+    own_goals: int
+    penalties_saved: int
+    penalties_missed: int
+    yellow_cards: int
+    red_cards: int
+    saves: int
+    bonus: int
+    bps: int
+    influence: float
+    creativity: float
+    threat: float
+    ict_index: float
+    starts: int
+    expected_goals: float
+    expected_assists: float
+    expected_goal_involvements: float
+    expected_goals_conceded: float
 
 
+@dataclass
 class FPLLeagueStandings:
-    def __init__(self, league_id: int, league_name: str, standings: List[dict]):
-        self.league_id = league_id
-        self.league_name = league_name
-        self.standings = [FPLTeamStanding(**team_data) for team_data in standings]
+    league_id: int
+    league_name: str
+    standings: List["FPLTeamStanding"]
 
 
+@dataclass
 class FPLTeamStanding:
-    def __init__(
-        self,
-        id: int,
-        division: int,
-        entry: Optional[int],
-        player_name: str,
-        rank: int,
-        last_rank: int,
-        rank_sort: int,
-        total: int,
-        entry_name: str,
-        matches_played: int,
-        matches_won: int,
-        matches_drawn: int,
-        matches_lost: int,
-        points_for: int,
-    ):
-        self.id = id
-        self.division = division
-        self.entry = entry
-        self.player_name = player_name
-        self.rank = rank
-        self.last_rank = last_rank
-        self.rank_sort = rank_sort
-        self.total = total
-        self.entry_name = entry_name
-        self.matches_played = matches_played
-        self.matches_won = matches_won
-        self.matches_drawn = matches_drawn
-        self.matches_lost = matches_lost
-        self.points_for = points_for
+    id: int
+    division: int
+    entry: Optional[int]
+    player_name: str
+    rank: int
+    last_rank: int
+    rank_sort: int
+    total: int
+    entry_name: str
+    matches_played: int
+    matches_won: int
+    matches_drawn: int
+    matches_lost: int
+    points_for: int
 
 
+@dataclass
 class FPLEventStatusResponse:
-    def __init__(self, status: List[dict], leagues: bool = False):
-        self.leagues: bool = leagues
-        self.status: List[FPLEventStatus] = [
-            FPLEventStatus(
-                s.get("bonus_added"), s.get("date"), s.get("event"), s.get("points")
-            )
-            for s in status
-        ]
+    status: List["FPLEventStatus"]
+    leagues: bool = field(default=False)
 
 
+@dataclass
 class FPLEventStatus:
-    def __init__(self, bonus_added, date, event, points):
-        self.bonus_added: bool = bonus_added
-        self.date = datetime.strptime(date, "%Y-%m-%d").date()
-        self.event: int = event
-        self.points: float = points
+    bonus_added: bool
+    date: date
+    event: int
+    points: float
 
-
-class MatchFixture:
-    def __init__(self, data):
-        self.code: int = data.get("code")
-        self.event: int = data.get("event")
-        self.finished: bool = data.get("finished")
-        self.finished_provisional: bool = data.get("finished_provisional")
-        self.id: int = data.get("id")
-        self.kickoff_time: datetime = datetime.strptime(
-            data.get("kickoff_time"), "%Y-%m-%dT%H:%M:%SZ"
+    def __post_init__(self):
+        self.date = (
+            self.date
+            if isinstance(self.date, datetime)
+            else datetime.strptime(self.date, "%Y-%m-%d").date()
         )
-        self.minutes: int = data.get("minutes")
-        self.provisional_start_time: bool = data.get("provisional_start_time")
-        self.started: bool = data.get("started")
-        self.team_a: int = data.get("team_a")
-        self.team_a_score: int = data.get("team_a_score")
-        self.team_h: int = data.get("team_h")
-        self.team_h_score: int = data.get("team_h_score")
-        self.stats: List[
-            Dict[str, Union[str, List[Dict[str, Union[int, str]]]]]
-        ] = data.get("stats")
-        self.team_h_difficulty: int = data.get("team_h_difficulty")
-        self.team_a_difficulty: int = data.get("team_a_difficulty")
-        self.pulse_id: int = data.get("pulse_id")
+
+
+@dataclass
+class MatchFixture:
+    code: int
+    event: int
+    finished: bool
+    finished_provisional: bool
+    id: int
+    kickoff_time: datetime
+    minutes: int
+    provisional_start_time: bool
+    started: bool
+    team_a: int
+    team_a_score: int
+    team_h: int
+    team_h_score: int
+    stats: List[Dict[str, Union[str, List[Dict[str, Union[int, str]]]]]]
+    team_h_difficulty: int
+    team_a_difficulty: int
+    pulse_id: int
+
+    def __post_init__(self):
+        self.kickoff_time = (
+            self.kickoff_time
+            if isinstance(self.kickoff_time, datetime)
+            else datetime(self.kickoff_time, "%Y-%m-%dT%H:%M:%SZ")
+        )

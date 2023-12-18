@@ -10,6 +10,12 @@ from models import (
     FPLLeagueStandings,
     FPLEventStatusResponse,
     MatchFixture,
+    H2HData,
+    Pick,
+    EntryHistory,
+    PlayerSeasonHistory,
+    FPLTeamStanding,
+    FPLEventStatus,
 )
 import util
 
@@ -52,7 +58,8 @@ class FPLAdapter:
         data: dict = response.json()
 
         return FPLEventStatusResponse(
-            status=data.get("status"), leagues=data.get("leagues")
+            leagues=data.get("leagues"),
+            status=[FPLEventStatus(**d) for d in data.get("status")],
         )
 
     @util.time_track(description="FPLAdapter.get_h2h_league_standing")
@@ -71,7 +78,9 @@ class FPLAdapter:
         return FPLLeagueStandings(
             league_id=data.get("league").get("id"),
             league_name=data.get("league").get("name"),
-            standings=data.get("standings").get("results"),
+            standings=[
+                FPLTeamStanding(**d) for d in data.get("standings").get("results")
+            ],
         )
 
     @util.time_track(description="FPLAdapter.get_h2h_results")
@@ -86,7 +95,13 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
 
-        return H2HResponse(response=response.json())
+        data = response.json()
+
+        return H2HResponse(
+            has_next=data.get("has_next"),
+            page=data.get("page"),
+            results=[H2HData(**d) for d in data.get("results")],
+        )
 
     @util.time_track(description="FPLAdapter.get_player_gameweek_info")
     async def get_player_gameweek_info(self, gameweek: int, player_id: int):
@@ -98,9 +113,8 @@ class FPLAdapter:
             )
         data: dict = response.json()
         player_data = PlayerData(
-            fixtures=data.get("fixtures"),
-            history=data.get("history"),
-            history_past=data.get("history_past"),
+            history=[PlayerHistory(**d) for d in data.get("history")],
+            history_past=[PlayerSeasonHistory(**d) for d in data.get("history_past")],
         )
         history: PlayerHistory
         for h in player_data.history:
@@ -125,8 +139,8 @@ class FPLAdapter:
         return FantasyTeam(
             active_chip=data.get("active_chip"),
             automatic_subs=data.get("automatic_subs"),
-            entry_history=data.get("entry_history"),
-            picks=data.get("picks"),
+            entry_history=EntryHistory(**data.get("entry_history")),
+            picks=[Pick(**d) for d in data.get("picks")],
         )
 
     @util.time_track(description="FPLAdapter.list_gameweek_fixtures")
@@ -138,8 +152,5 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: List[dict] = response.json()
-        results: List[MatchFixture] = []
-        for d in data:
-            fixture = MatchFixture(data=d)
-            results.append(fixture)
+        results = [MatchFixture(**d) for d in data]
         return results

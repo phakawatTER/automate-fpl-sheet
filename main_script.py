@@ -51,9 +51,9 @@ async def main():
     message_service.send_gameweek_result_message(
         gameweek, players, group_id=group_id, event_status=event_status
     )
-    # players_revenues = await fpl_service.list_players_revenues()
-    # message_service.send_playeres_revenue_summary(players_revenues, group_id)
-    # message_service.send_gameweek_reminder_message(gameweek, group_id)
+    players_revenues = await fpl_service.list_players_revenues()
+    message_service.send_playeres_revenue_summary(players_revenues, group_id)
+    message_service.send_gameweek_reminder_message(gameweek, group_id)
 
 
 if __name__ == "__main__":
