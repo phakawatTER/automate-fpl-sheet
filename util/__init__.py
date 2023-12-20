@@ -5,6 +5,10 @@ import functools
 from loguru import logger
 
 
+def is_lambda():
+    return __name__ == "lambda_function"
+
+
 def time_track(func=None, description: str = ""):
     def decorator(func):
         @functools.wraps(func)
@@ -73,4 +77,10 @@ def convert_to_a1_notation(row, col):
     return f"{col_str}{row}"
 
 
-__all__ = ["time_track", "add_noise", "is_equal_float", "convert_to_a1_notation"]
+__all__ = [
+    "time_track",
+    "add_noise",
+    "is_equal_float",
+    "convert_to_a1_notation",
+    "is_lambda",
+]

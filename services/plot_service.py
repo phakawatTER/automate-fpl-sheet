@@ -112,26 +112,27 @@ class Service:
             plt.legend()
             plt.grid(True)
 
-            plot_destination = "/tmp/figure_all.png"
-            plt.savefig(plot_destination, bbox_inches="tight")
-            if i == 0:
+            if i == len(player_names) - 1:
+                plot_destination = "/tmp/figure_all.png"
+                plt.savefig(plot_destination, bbox_inches="tight")
                 plot_destinations.append(plot_destination)
 
         urls: List[str] = []
 
-        for destination in plot_destinations:
-            file_name = self.__get_file_name_from_path(destination)
-            key = f"plots/{file_name}"
-            self.__s3_uploader.upload_to_default_bucket(
-                key=key,
-                filename=destination,
-                content_type="image/png",
-                expires=None,
-            )
+        if util.is_lambda():
+            for destination in plot_destinations:
+                file_name = self.__get_file_name_from_path(destination)
+                key = f"plots/{file_name}"
+                self.__s3_uploader.upload_to_default_bucket(
+                    key=key,
+                    filename=destination,
+                    content_type="image/png",
+                    expires=None,
+                )
 
-            presigned_url = self.__s3_uploader.generate_presigned_url(
-                key, expiration_time=24 * 3600
-            )
-            urls.append(presigned_url)
+                presigned_url = self.__s3_uploader.generate_presigned_url(
+                    key, expiration_time=24 * 3600
+                )
+                urls.append(presigned_url)
 
         return urls
