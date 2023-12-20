@@ -73,11 +73,23 @@ Resources:
       ContentUri: ./layer # Path to the folder containing Node.js modules for the layer
       Description: FPL Line Message API Layer
 
+  FPLPythonNumpyLayer:
+    Type: "AWS::Serverless::LayerVersion"
+    Properties:
+      LayerName: FPLPythonNumpyLayer
+      CompatibleRuntimes:
+        - python3.9
+      CompatibleArchitectures:
+        - "x86_64"
+      ContentUri: ./layer_numpy # Path to the folder containing Node.js modules for the layer
+      Description: FPL Line Message API Layer
+
   FPLLineMessageAPI:
     Type: "AWS::Serverless::Function"
     Properties:
       Layers:
         - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
       FunctionName: FPLLineMessageAPI
       Handler: "lambda/line_message_api.handler"
       CodeUri: "./deployment_package"
@@ -91,6 +103,20 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: Any
+
+  FPLPlotGenerator:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Layers:
+        - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
+      FunctionName: FPLPlotGenerator
+      Handler: "lambda/plot_generator.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 2048
 
   FPLLineMessageAPIWarmer:
     Type: AWS::Serverless::Function
@@ -106,6 +132,7 @@ Resources:
       MemorySize: 512
       Layers:
         - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
       Environment:
         Variables:
           FUNCTION_NAME: "FPLLineMessageAPI"
@@ -123,6 +150,7 @@ Resources:
       FunctionName: FPLLineAutomateGameweekMessageSender
       Layers:
         - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
       Handler: "lambda/automate_bot.handler"
       CodeUri: "./deployment_package"
       Role: !GetAtt FPLPolicy.Arn
@@ -141,6 +169,7 @@ Resources:
       FunctionName: FPLGameweekReminder
       Layers:
         - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
       Handler: "lambda/gameweek_reminder.handler"
       CodeUri: "./deployment_package"
       Role: !GetAtt FPLPolicy.Arn

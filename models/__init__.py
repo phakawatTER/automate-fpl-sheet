@@ -14,7 +14,7 @@ from .fpl_model import (
     MatchFixture,
 )
 
-from .model import PlayerData as PlayerResultData, PlayerRevenue
+from .model import PlayerGameweekData, PlayerRevenue
 
 __all__ = [
     "FantasyTeam",
@@ -25,7 +25,7 @@ __all__ = [
     "PlayerData",
     "PlayerHistory",
     "PlayerSeasonHistory",
-    "PlayerResultData",
+    "PlayerGameweekData",
     "PlayerRevenue",
     "FPLLeagueStandings",
     "FPLTeamStanding",

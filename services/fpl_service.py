@@ -6,7 +6,7 @@ from loguru import logger
 from adapter import FPLAdapter, GoogleSheet, DynamoDB
 from config import Config
 from models import (
-    PlayerResultData,
+    PlayerGameweekData,
     PlayerRevenue,
     FPLEventStatus,
     MatchFixture,
@@ -40,7 +40,7 @@ class Service:
         return response
 
     async def __construct_players_gameweek_pick_data(
-        self, player: PlayerResultData, gameweek: int
+        self, player: PlayerGameweekData, gameweek: int
     ):
         player_team = await self.fpl_adapter.get_player_team_by_id(
             player.player_id, gameweek=gameweek
@@ -63,7 +63,7 @@ class Service:
     @util.time_track(description="Construct Players Gameweek Data")
     async def __construct_players_gameweek_data(self, gameweek: int):
         h2h_result = await self.fpl_adapter.get_h2h_results(gameweek=gameweek)
-        players_points_map: Dict[int, PlayerResultData] = {}
+        players_points_map: Dict[int, PlayerGameweekData] = {}
         results = h2h_result.results
 
         for result in results:
@@ -77,9 +77,9 @@ class Service:
             p2_id = result.entry_2_entry
 
             if p1_name not in self.config.ignore_players:
-                players_points_map[p1_id] = PlayerResultData(p1_name, p1_id, p1_point)
+                players_points_map[p1_id] = PlayerGameweekData(p1_name, p1_id, p1_point)
             if p2_name not in self.config.ignore_players:
-                players_points_map[p2_id] = PlayerResultData(p2_name, p2_id, p2_point)
+                players_points_map[p2_id] = PlayerGameweekData(p2_name, p2_id, p2_point)
 
         futures = []
         for _, player in players_points_map.items():
@@ -88,7 +88,7 @@ class Service:
             )
             futures.append(player_result_future)
 
-        players: List[PlayerResultData] = await asyncio.gather(*futures)
+        players: List[PlayerGameweekData] = await asyncio.gather(*futures)
 
         # Sorting the list of PlayerResultData instances by the 'point' attribute
         players = sorted(players, key=lambda player: player.points, reverse=True)
@@ -96,7 +96,7 @@ class Service:
         return players
 
     @util.time_track(description="Update FPL Table")
-    async def update_fpl_table(self, gameweek: int):
+    async def get_or_update_fpl_gameweek_table(self, gameweek: int):
         if not self.__is_current_gameweek(gameweek=gameweek):
             cache = self.__lookup_gameweek_result_cache(gameweek)
             if cache is not None:
@@ -125,6 +125,10 @@ class Service:
             self.__update_players_shared_reward(
                 current_reward_col=current_reward_col, players=players
             )
+
+        for player in players:
+            self.worksheet.range("")
+            player.cummulative_revenue = 0
 
         player_cache_items = [player.__dict__ for player in players]
         self.__put_cache_item(key=f"gameweek-{gameweek}", item=player_cache_items)
@@ -221,7 +225,7 @@ class Service:
     @util.time_track(description="Update Players Reward from Sheet")
     def __update_players_reward_from_sheet(
         self,
-        players: List[PlayerResultData],
+        players: List[PlayerGameweekData],
         start_point_row: int,
         current_reward_col: int,
     ):
@@ -261,9 +265,9 @@ class Service:
                     player.reward = cell_value
 
     def __update_players_shared_reward(
-        self, players: List[PlayerResultData], current_reward_col: int
+        self, players: List[PlayerGameweekData], current_reward_col: int
     ):
-        players_with_shared_reward: List[PlayerResultData] = [
+        players_with_shared_reward: List[PlayerGameweekData] = [
             player for player in players if player.reward_division > 1
         ]
         if len(players_with_shared_reward) == 0:
@@ -293,7 +297,7 @@ class Service:
     @util.time_track(description="Update Players point in Sheet")
     def __update_players_points_map_in_sheet(
         self,
-        players: List[PlayerResultData],
+        players: List[PlayerGameweekData],
         start_point_row: int,
         current_point_col: int,
     ):
@@ -315,7 +319,7 @@ class Service:
         cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
         self.worksheet.update(cell_range, cell_values)
 
-    def __expand_check_dupl_point(self, players: List[PlayerResultData]):
+    def __expand_check_dupl_point(self, players: List[PlayerGameweekData]):
         players_points_map = [p.points for p in players]
         for i, p in enumerate(players):
             for j, point in enumerate(players_points_map):
@@ -333,7 +337,7 @@ class Service:
 
     def __lookup_gameweek_result_cache(
         self, gameweek: int
-    ) -> Optional[List[PlayerResultData]]:
+    ) -> Optional[List[PlayerGameweekData]]:
         response = self.dynamodb.get_item_by_hash_key(key=f"gameweek-{gameweek}")
         item = response.get("Item")
         if item is None:
@@ -343,12 +347,12 @@ class Service:
 
         data = item.get("DATA").get("S")
         players_objs = json.loads(data)
-        player_data_dict = dict.fromkeys(PlayerResultData().__dict__.keys())
-        players: List[PlayerResultData] = []
+        player_data_dict = dict.fromkeys(PlayerGameweekData().__dict__.keys())
+        players: List[PlayerGameweekData] = []
         for player_obj in players_objs:
             init_dict = {}
             for key in player_data_dict:
                 init_dict[key] = player_obj[key]
-            player = PlayerResultData(**init_dict)
+            player = PlayerGameweekData(**init_dict)
             players.append(player)
         return players

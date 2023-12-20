@@ -3,7 +3,7 @@ from typing import List
 
 
 @dataclass
-class PlayerData:
+class PlayerGameweekData:
     name: str = ""
     player_id: int = 0
     points: float = 0
@@ -14,6 +14,7 @@ class PlayerData:
     captain_points: int = 0
     vice_captain_points: int = 0
     bank_account: str = ""
+    cummulative_revenue: float = 0
 
 
 @dataclass

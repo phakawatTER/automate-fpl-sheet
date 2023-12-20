@@ -1,4 +1,4 @@
-from linebot.models import FlexSendMessage, TextMessage
+from linebot.models import FlexSendMessage, TextMessage, ImageSendMessage
 from linebot.exceptions import LineBotApiError
 from linebot import LineBotApi
 from loguru import logger
@@ -27,3 +27,16 @@ class LineBot:
             )
         except LineBotApiError as e:
             logger.error(f"error sending Flex Message: {e}")
+
+    def send_image_message(self, image_url: str, group_id: str):
+        try:
+            self.line_bot_api.push_message(
+                group_id,
+                ImageSendMessage(
+                    original_content_url=image_url,
+                    preview_image_url=image_url,
+                    group_id=group_id,
+                ),
+            )
+        except LineBotApiError as e:
+            logger.error(f"error sending Text Message: {e}")

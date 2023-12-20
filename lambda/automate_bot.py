@@ -26,7 +26,7 @@ async def execute():
     google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
     fpl_service = FPLService(google_sheet=google_sheet, config=config)
     gw_status = await fpl_service.get_current_gameweek()
-    players = await fpl_service.update_fpl_table(gw_status.event)
+    players = await fpl_service.get_or_update_fpl_gameweek_table(gw_status.event)
 
     message_service = MessageService(config=config)
     # NOTE: group_id here should be fetched from database. hardcode it for now

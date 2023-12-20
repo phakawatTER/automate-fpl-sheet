@@ -18,10 +18,13 @@ class MessageService:
     def send_text_message(self, text: str, group_id: str):
         self.bot.send_text_message(group_id, text=text)
 
+    def send_image_messsage(self, image_url: str, group_id: str):
+        self.bot.send_image_message(image_url=image_url, group_id=group_id)
+
     def send_gameweek_result_message(
         self,
         gameweek: int,
-        players: List[models.PlayerResultData],
+        players: List[models.PlayerGameweekData],
         group_id: str,
         event_status: Optional[models.FPLEventStatusResponse] = None,
     ):
@@ -61,7 +64,7 @@ class MessageService:
     def send_carousel_gameweek_results_message(
         self,
         gameweeks_data: List[
-            Tuple[List[models.PlayerResultData], models.FPLEventStatusResponse, int]
+            Tuple[List[models.PlayerGameweekData], models.FPLEventStatusResponse, int]
         ],
         group_id: str,
     ):
@@ -76,7 +79,6 @@ class MessageService:
             messages.append(m.build())
 
         message = GameweekResultCarouselMessage(messages=messages).build()
-        print(message)
         self.bot.send_flex_message(
             flex_message=message, alt_text="Gameweek Results", group_id=group_id
         )

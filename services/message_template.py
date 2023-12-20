@@ -1,6 +1,6 @@
 import math
 from typing import List, Optional
-from models import PlayerResultData, PlayerRevenue, FPLEventStatusResponse
+from models import PlayerGameweekData, PlayerRevenue, FPLEventStatusResponse
 
 
 class Color:
@@ -93,7 +93,7 @@ class GameweekResultCarouselMessage:
 class GameweekResultMessage(_CommonMessage):
     def __init__(
         self,
-        players: List[PlayerResultData],
+        players: List[PlayerGameweekData],
         gameweek: int,
         sheet_url: str,
         event_status: Optional[FPLEventStatusResponse] = None,

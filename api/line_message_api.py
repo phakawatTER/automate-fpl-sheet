@@ -1,22 +1,28 @@
 import re
 import asyncio
+import json
 from typing import List, Optional
 from flask import Flask, request, abort
-from oauth2client.service_account import ServiceAccountCredentials
+from boto3.session import Session
+from boto3_type_annotations.lambda_ import Client as LambdaClient
 from linebot import WebhookHandler
 from linebot.models import MessageEvent, TextMessage, SourceGroup
 from linebot.exceptions import InvalidSignatureError
 from loguru import logger
-from services import FPLService, MessageService
-from adapter import GoogleSheet
-from config.config import Config
 import models
+import util
+from services import FPLService, MessageService
+from config.config import Config
+
+
+PLOT_GENERATOR_FUNCTION_NAME = "FPLPlotGenerator"
 
 
 class MessageHandlerActionGroup:
-    UPDATE_FPL_TABLE = "update_fpl_table"
-    BATCH_UPDATE_FPL_TABLE = "batch_update_fpl_table"
-    GET_PLAYERS_REVENUES = "get_players_revenues"
+    UPDATE_FPL_TABLE = "UPDATE_FPL_TABLE"
+    BATCH_UPDATE_FPL_TABLE = "BATCH_UPDATE_FPL_TABLE"
+    GET_PLAYERS_REVENUES = "GET_PLAYERS_REVENUES"
+    GENERATE_GAMEWEEKS_PLOT = "GENERATE_GAMEWEEKS_PLOT"
 
 
 class LineMessageAPI:
@@ -24,16 +30,21 @@ class LineMessageAPI:
         r"get (gw|gameweek) (\d+-\d+)": MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE,
         r"get (gw|gameweek) (\d+)": MessageHandlerActionGroup.UPDATE_FPL_TABLE,
         r"get (revenue|rev)": MessageHandlerActionGroup.GET_PLAYERS_REVENUES,
+        r"get (plot|plt) (\d+-\d+)": MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT,
     }
 
-    def __init__(self, config: Config, credential: ServiceAccountCredentials):
+    def __init__(
+        self,
+        message_service: MessageService,
+        fpl_service: FPLService,
+        config: Config,
+    ):
         self.__app = Flask(__name__)
         self.__handler = WebhookHandler(config.line_channel_secret)
-        self.__message_service = MessageService(config=config)
-        self.__config = config
-        google_sheet = GoogleSheet(credential=credential)
-        google_sheet.open_sheet_by_url(config.sheet_url)
-        self.__fpl_service = FPLService(config=self.__config, google_sheet=google_sheet)
+        self.__message_service = message_service
+        self.__fpl_service = fpl_service
+        self.__session = Session()
+        self.__lambda_client: LambdaClient = self.__session.client("lambda")
 
     def initialize(self):
         @self.__app.route("/health-check", methods=["GET"])
@@ -61,7 +72,6 @@ class LineMessageAPI:
             for pattern, action in LineMessageAPI.PATTERN_ACTIONS.items():
                 match = re.search(pattern, text.lower())
                 if match:
-                    logger.success("math", match)
                     loop = asyncio.new_event_loop()
                     if action == MessageHandlerActionGroup.UPDATE_FPL_TABLE:
                         extracted_group = match.group(2)
@@ -75,26 +85,12 @@ class LineMessageAPI:
                         extracted_group = match.group(2).split("-")
                         start_gw = int(extracted_group[0])
                         end_gw = int(extracted_group[1])
-                        # Validate if start_gw and end_gw are in the range (1, 38)
-                        if 1 <= start_gw <= 38 and 1 <= end_gw <= 38:
-                            # Validate if start_gw is less than or equal to end_gw
-                            if start_gw > end_gw:
-                                self.__message_service.send_text_message(
-                                    "Validation error: start_gw should be less than or equal to end_gw",
-                                    source.group_id,
-                                )
-                                abort(403)
-                        else:
-                            self.__message_service.send_text_message(
-                                "Validation error: start_gw and end_gw should be in the range (1, 38)",
-                                source.group_id,
-                            )
-                            abort(403)
+                        self.__validate_gameweek_range(start_gw, end_gw, source)
 
                         loop.run_until_complete(
-                            self.__handle_batch_update_fpl_table(
-                                start_gw, end_gw, source.group_id
-                            )
+                            self.__run_in_error_wrapper(
+                                self.__handle_batch_update_fpl_table
+                            )(start_gw, end_gw, source.group_id)
                         )
 
                     elif action == MessageHandlerActionGroup.GET_PLAYERS_REVENUES:
@@ -102,6 +98,16 @@ class LineMessageAPI:
                         loop.run_until_complete(
                             self.__run_in_error_wrapper(self.__handle_get_revenues)(
                                 group_id=source.group_id
+                            )
+                        )
+                    elif action == MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT:
+                        extracted_group = match.group(2).split("-")
+                        start_gw = int(extracted_group[0])
+                        end_gw = int(extracted_group[1])
+                        self.__validate_gameweek_range(start_gw, end_gw, source)
+                        loop.run_until_complete(
+                            self.__run_in_error_wrapper(self.__handle_gameweek_plots)(
+                                start_gw, end_gw, source.group_id
                             )
                         )
                     else:
@@ -134,7 +140,7 @@ class LineMessageAPI:
             None if event_status is None else event_status.status[0].event
         )
 
-        gameweek_players: List[List[models.PlayerResultData]] = []
+        gameweek_players: List[List[models.PlayerGameweekData]] = []
         event_statuses: List[Optional[models.FPLEventStatusResponse]] = []
         gameweeks: List[int] = []
         self.__message_service.send_text_message(
@@ -142,7 +148,9 @@ class LineMessageAPI:
             group_id=group_id,
         )
         for gameweek in range(from_gameweek, to_gameweek + 1):
-            players = await self.__fpl_service.update_fpl_table(gameweek)
+            players = await self.__fpl_service.get_or_update_fpl_gameweek_table(
+                gameweek
+            )
             gameweek_players.append(players)
             event_statuses.append(
                 event_status
@@ -176,7 +184,9 @@ class LineMessageAPI:
             f"Gameweek {gameweek} result is being processed. Please wait for a moment",
             group_id=group_id,
         )
-        players = await self.__fpl_service.update_fpl_table(gameweek=gameweek)
+        players = await self.__fpl_service.get_or_update_fpl_gameweek_table(
+            gameweek=gameweek
+        )
         event_status = await self.__fpl_service.get_gameweek_event_status(gameweek)
         self.__message_service.send_gameweek_result_message(
             gameweek=gameweek,
@@ -194,3 +204,40 @@ class LineMessageAPI:
         self.__message_service.send_playeres_revenue_summary(
             players_revenues=players, group_id=group_id
         )
+
+    @util.time_track(description="Gameweek plot handler")
+    async def __handle_gameweek_plots(
+        self, from_gameweek: int, to_gameweek: int, group_id: str
+    ):
+        payload = {"start_gw": from_gameweek, "end_gw": to_gameweek}
+        response = self.__lambda_client.invoke(
+            FunctionName=PLOT_GENERATOR_FUNCTION_NAME,
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload),
+        )
+        logger.success(response)
+        if response.get("StatusCode") != 200:
+            abort(response.get("StatusCode"))
+        payload_bytes = response.get("Payload").read()
+        urls: List[str] = json.loads(payload_bytes)
+        for url in urls:
+            self.__message_service.send_image_messsage(image_url=url, group_id=group_id)
+
+    def __validate_gameweek_range(
+        self, start_gw: int, end_gw: int, source: SourceGroup
+    ):
+        # Validate if start_gw and end_gw are in the range (1, 38)
+        if 1 <= start_gw <= 38 and 1 <= end_gw <= 38:
+            # Validate if start_gw is less than or equal to end_gw
+            if start_gw > end_gw:
+                self.__message_service.send_text_message(
+                    "Validation error: start_gw should be less than or equal to end_gw",
+                    source.group_id,
+                )
+                abort(403)
+        else:
+            self.__message_service.send_text_message(
+                "Validation error: start_gw and end_gw should be in the range (1, 38)",
+                source.group_id,
+            )
+            abort(403)

@@ -7,5 +7,6 @@ config.json
 deployment_package/
 package.zip
 layer/
+layer_numpy/
 template-export.yml
 env_fpl/
