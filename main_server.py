@@ -9,4 +9,4 @@ if __name__ == "__main__":
     )
     line_message_api = LineMessageAPI(config, credential=credential)
     app = line_message_api.initialize()
-    app.run(port=5100)
+    app.run(port=5100, debug=True)

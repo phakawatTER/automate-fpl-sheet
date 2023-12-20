@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from line import LineBot
+import models
 from config import Config
-from models import PlayerResultData, PlayerRevenue, FPLEventStatusResponse
 from .message_template import (
     GameweekResultMessage,
     RevenueMessage,
@@ -21,9 +21,9 @@ class MessageService:
     def send_gameweek_result_message(
         self,
         gameweek: int,
-        players: List[PlayerResultData],
+        players: List[models.PlayerResultData],
         group_id: str,
-        event_status: Optional[FPLEventStatusResponse] = None,
+        event_status: Optional[models.FPLEventStatusResponse] = None,
     ):
         message = GameweekResultMessage(
             gameweek=gameweek,
@@ -39,7 +39,7 @@ class MessageService:
         )
 
     def send_playeres_revenue_summary(
-        self, players_revenues: List[PlayerRevenue], group_id: str
+        self, players_revenues: List[models.PlayerRevenue], group_id: str
     ):
         message = RevenueMessage(
             players_revenues=players_revenues,
@@ -60,15 +60,13 @@ class MessageService:
 
     def send_carousel_gameweek_results_message(
         self,
-        gameweek_players: List[List[PlayerResultData]],
-        event_statuses: List[FPLEventStatusResponse],
-        gameweeks: List[int],
+        gameweeks_data: List[
+            Tuple[List[models.PlayerResultData], models.FPLEventStatusResponse, int]
+        ],
         group_id: str,
     ):
         messages = []
-        for players, event_status, gameweek in zip(
-            gameweek_players, event_statuses, gameweeks
-        ):
+        for players, event_status, gameweek in gameweeks_data:
             m = GameweekResultMessage(
                 players=players,
                 event_status=event_status,
