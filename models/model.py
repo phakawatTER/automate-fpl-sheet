@@ -14,7 +14,6 @@ class PlayerGameweekData:
     captain_points: int = 0
     vice_captain_points: int = 0
     bank_account: str = ""
-    cummulative_revenue: float = 0
 
 
 @dataclass

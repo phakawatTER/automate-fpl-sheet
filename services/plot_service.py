@@ -35,7 +35,7 @@ class Service:
         _, file_name = os.path.split(file_path)
         return file_name
 
-    @util.time_track(description="Generate overall gameweeks plot")
+    @util.time_track(description="Generate overall gameweek revenue plot")
     async def generate_overall_gameweeks_plot(
         self, from_gameweek: int, to_gameweek: int
     ) -> List[str]:
@@ -62,10 +62,16 @@ class Service:
                     players_dict[player.name].append(player)
 
         player_names = list(players_dict)
-        player_points = [
-            [gw.points for gw in gameweek_results]
-            for key, gameweek_results in players_dict.items()
-        ]
+        player_points: List[List[int]] = []
+        for _, gameweek_results in players_dict.items():
+            player_rewards = [gw.reward for gw in gameweek_results]
+            cummulative_rewards = []
+            for i, _ in enumerate(player_rewards):
+                player_reward = 0
+                for _reward in player_rewards[: i + 1]:
+                    player_reward += _reward
+                cummulative_rewards.append(player_reward)
+            player_points.append(cummulative_rewards)
 
         plot_destinations: List[str] = []
         # Plotting the trend graph
@@ -79,7 +85,7 @@ class Service:
                 color=COLORS[i % len(COLORS)],
             )
             # Customize the plot
-            plt.title("FPL Player Points Over Weeks")
+            plt.title("FPL Player Cummulative Revenue Over Weeks")
             plt.xlabel("Weeks")
             plt.ylabel("Points")
             plt.legend()
@@ -100,7 +106,7 @@ class Service:
                 color=COLORS[i % len(COLORS)],
             )
             # Customize the plot
-            plt.title("FPL Player Points Over Weeks")
+            plt.title("FPL Player Cummulative Revenue Over Weeks")
             plt.xlabel("Weeks")
             plt.ylabel("Points")
             plt.legend()

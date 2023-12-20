@@ -126,10 +126,6 @@ class Service:
                 current_reward_col=current_reward_col, players=players
             )
 
-        for player in players:
-            self.worksheet.range("")
-            player.cummulative_revenue = 0
-
         player_cache_items = [player.__dict__ for player in players]
         self.__put_cache_item(key=f"gameweek-{gameweek}", item=player_cache_items)
 
