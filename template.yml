@@ -4,6 +4,8 @@ Transform:
 Description: "FPL Line Message App"
 
 Globals:
+  Function:
+    Runtime: python3.9
   Api:
     # https://github.com/awslabs/serverless-application-model/blob/master/examples/2016-10-31/implicit_api_settings/template.yaml
     # Logging, Metrics, Throttling, and all other Stage settings
@@ -117,6 +119,31 @@ Resources:
       Runtime: python3.9
       Timeout: 300
       MemorySize: 2048
+
+  FPLLineUpNotificationTask:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Layers:
+        - !Ref FPLPythonLayer
+        - !Ref FPLPythonNumpyLayer
+      FunctionName: FPLLineUpNotificationTask
+      Handler: "lambda/lineup_notification.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 512
+
+  FPLLineUpNotificationStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: FPLLineUpNotificationStateMachine
+      DefinitionUri: ./statemachine/lineup_notification.asl.json
+      DefinitionSubstitutions:
+        TaskArn: !GetAtt FPLLineUpNotificationTask.Arn
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref FPLLineUpNotificationTask
 
   FPLLineMessageAPIWarmer:
     Type: AWS::Serverless::Function

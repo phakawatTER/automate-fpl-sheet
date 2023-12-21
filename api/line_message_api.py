@@ -23,6 +23,7 @@ class MessageHandlerActionGroup:
     BATCH_UPDATE_FPL_TABLE = "BATCH_UPDATE_FPL_TABLE"
     GET_PLAYERS_REVENUES = "GET_PLAYERS_REVENUES"
     GENERATE_GAMEWEEKS_PLOT = "GENERATE_GAMEWEEKS_PLOT"
+    GET_PLAYER_GW_PICKS = "GET_PLAYER_GW_PICKS"
 
 
 class LineMessageAPI:
@@ -31,6 +32,7 @@ class LineMessageAPI:
         r"get (gw|gameweek) (\d+)": MessageHandlerActionGroup.UPDATE_FPL_TABLE,
         r"get (revenue|rev)": MessageHandlerActionGroup.GET_PLAYERS_REVENUES,
         r"get (plot|plt) (\d+-\d+)": MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT,
+        r"get (picks) (\d+)": MessageHandlerActionGroup.GET_PLAYER_GW_PICKS,
     }
 
     def __init__(
@@ -109,6 +111,14 @@ class LineMessageAPI:
                             self.__run_in_error_wrapper(self.__handle_gameweek_plots)(
                                 start_gw, end_gw, source.group_id
                             )
+                        )
+                    elif action == MessageHandlerActionGroup.GET_PLAYER_GW_PICKS:
+                        extracted_group = match.group(2)
+                        gameweek = int(extracted_group)
+                        loop.run_until_complete(
+                            self.__run_in_error_wrapper(
+                                self.__handle_players_gameweek_picks
+                            )(gameweek=gameweek, group_id=source.group_id)
                         )
                     else:
                         pass
@@ -209,6 +219,10 @@ class LineMessageAPI:
     async def __handle_gameweek_plots(
         self, from_gameweek: int, to_gameweek: int, group_id: str
     ):
+        self.__message_service.send_text_message(
+            text=f"Plots for GW{from_gameweek} to GW{to_gameweek} are being processed. Please wait for a moment...",
+            group_id=group_id,
+        )
         payload = {"start_gw": from_gameweek, "end_gw": to_gameweek}
         response = self.__lambda_client.invoke(
             FunctionName=PLOT_GENERATOR_FUNCTION_NAME,
@@ -220,8 +234,19 @@ class LineMessageAPI:
             abort(response.get("StatusCode"))
         payload_bytes = response.get("Payload").read()
         urls: List[str] = json.loads(payload_bytes)
+        logger.info(urls)
         for url in urls:
             self.__message_service.send_image_messsage(image_url=url, group_id=group_id)
+
+    async def __handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+        player_gameweek_picks = await self.__fpl_service.list_player_gameweek_picks(
+            gameweek=gameweek
+        )
+        self.__message_service.send_carousel_players_gameweek_picks(
+            gameweek=gameweek,
+            player_gameweek_picks=player_gameweek_picks,
+            group_id=group_id,
+        )
 
     def __validate_gameweek_range(
         self, start_gw: int, end_gw: int, source: SourceGroup

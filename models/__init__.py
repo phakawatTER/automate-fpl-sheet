@@ -14,7 +14,14 @@ from .fpl_model import (
     MatchFixture,
 )
 
-from .model import PlayerGameweekData, PlayerRevenue
+from .model import (
+    PlayerGameweekData,
+    PlayerRevenue,
+    PlayerGameweekPicksData,
+    PlayerSheetData,
+)
+
+from .bootstrap import Bootstrap, BootstrapElement, BootstrapGameweek
 
 __all__ = [
     "FantasyTeam",
@@ -32,4 +39,9 @@ __all__ = [
     "FPLEventStatusResponse",
     "FPLEventStatus",
     "MatchFixture",
+    "Bootstrap",
+    "BootstrapElement",
+    "BootstrapGameweek",
+    "PlayerGameweekPicksData",
+    "PlayerSheetData",
 ]

@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from urllib.parse import urljoin
-from typing import List
+from typing import List, Optional
 import httpx
 from models import (
     H2HResponse,
@@ -16,6 +16,9 @@ from models import (
     PlayerSeasonHistory,
     FPLTeamStanding,
     FPLEventStatus,
+    BootstrapGameweek,
+    Bootstrap,
+    BootstrapElement,
 )
 import util
 
@@ -34,18 +37,38 @@ class FPLAdapter:
     TIMEOUT = 10
 
     def __init__(self, league_id: int, cookies: str):
-        self.cookies = cookies
-        self.league_id = league_id
+        self.__cookies = cookies
+        self.__league_id = league_id
 
     async def __get_request(self, url: str):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 url,
-                params={"cookies": self.cookies},
+                params={"cookies": self.__cookies},
                 timeout=FPLAdapter.TIMEOUT,
                 follow_redirects=True,
             )
             return response
+
+    @staticmethod
+    def get_element_image_url(element_code: str, width: int = 110, height: int = 140):
+        return f"https://resources.premierleague.com/premierleague/photos/players/{width}x{height}/p{element_code}.png"
+
+    # TODO: need to create dataclass for the response so we got type hint
+    @util.time_track(description="Get FPL Bootstrap")
+    async def get_bootstrap(self):
+        url = urljoin(FPLAdapter.BASE_URL, "/api/bootstrap-static")
+        response = await self.__get_request(url)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(
+                f"unexpected http status code: {response.status_code} with response data: {response.content}"
+            )
+        data: dict = response.json()
+        bootstrap = Bootstrap(
+            events=[BootstrapGameweek(**d) for d in data.get("events")],
+            elements=[BootstrapElement(**d) for d in data.get("elements")],
+        )
+        return bootstrap
 
     @util.time_track(description="FPLAdapter.get_gameweek_event_status")
     async def get_gameweek_event_status(self):
@@ -66,7 +89,7 @@ class FPLAdapter:
     async def get_h2h_league_standing(self):
         url = urljoin(
             FPLAdapter.BASE_URL,
-            f"/api/leagues-h2h/{self.league_id}/standings/?page_new_entries=1&page_standings=1",
+            f"/api/leagues-h2h/{self.__league_id}/standings/?page_new_entries=1&page_standings=1",
         )
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -87,7 +110,7 @@ class FPLAdapter:
     async def get_h2h_results(self, gameweek: int):
         url = urljoin(
             FPLAdapter.BASE_URL,
-            f"/api/leagues-h2h-matches/league/{self.league_id}/?page=1&event={gameweek}",
+            f"/api/leagues-h2h-matches/league/{self.__league_id}/?page=1&event={gameweek}",
         )
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -104,7 +127,9 @@ class FPLAdapter:
         )
 
     @util.time_track(description="FPLAdapter.get_player_gameweek_info")
-    async def get_player_gameweek_info(self, gameweek: int, player_id: int):
+    async def get_player_gameweek_info(
+        self, gameweek: int, player_id: int
+    ) -> Optional[PlayerHistory]:
         url = urljoin(FPLAdapter.BASE_URL, f"/api/element-summary/{player_id}")
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -116,12 +141,10 @@ class FPLAdapter:
             history=[PlayerHistory(**d) for d in data.get("history")],
             history_past=[PlayerSeasonHistory(**d) for d in data.get("history_past")],
         )
-        history: PlayerHistory
+        history: PlayerHistory = None
         for h in player_data.history:
             if h.round == gameweek:
                 history = h
-        if history is None:
-            raise FPLError(f"player data not found on gameweek {gameweek}")
         return history
 
     @util.time_track(description="FPLAdapter.get_player_team_by_id")

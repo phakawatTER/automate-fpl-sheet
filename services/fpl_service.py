@@ -1,5 +1,6 @@
 import json
 import asyncio
+from dataclasses import dataclass
 from typing import Dict, List, Optional
 from datetime import datetime
 from loguru import logger
@@ -11,6 +12,11 @@ from models import (
     FPLEventStatus,
     MatchFixture,
     FPLEventStatusResponse,
+    PlayerHistory,
+    FantasyTeam,
+    BootstrapElement,
+    PlayerGameweekPicksData,
+    PlayerSheetData,
 )
 import util
 
@@ -46,18 +52,28 @@ class Service:
             player.player_id, gameweek=gameweek
         )
         for pick in player_team.picks:
-            if pick.is_captain:
-                c = await self.fpl_adapter.get_player_gameweek_info(
-                    gameweek=gameweek, player_id=pick.element
+            player_gameweek_history: Optional[PlayerHistory] = None
+            if pick.is_captain or pick.is_vice_captain:
+                player_gameweek_history = (
+                    await self.fpl_adapter.get_player_gameweek_info(
+                        gameweek=gameweek, player_id=pick.element
+                    )
                 )
-                player.points += c.total_points / 10000 * pick.multiplier
-                player.captain_points = c.total_points * pick.multiplier
-            if pick.is_vice_captain:
-                c = await self.fpl_adapter.get_player_gameweek_info(
-                    gameweek=gameweek, player_id=pick.element
-                )
-                player.points += c.total_points / 1000000 * pick.multiplier
-                player.vice_captain_points = c.total_points * pick.multiplier
+            if player_gameweek_history is not None:
+                if pick.is_captain:
+                    player.points += (
+                        player_gameweek_history.total_points / 10000 * pick.multiplier
+                    )
+                    player.captain_points = (
+                        player_gameweek_history.total_points * pick.multiplier
+                    )
+                if pick.is_vice_captain:
+                    player.points += (
+                        player_gameweek_history.total_points / 1000000 * pick.multiplier
+                    )
+                    player.vice_captain_points = (
+                        player_gameweek_history.total_points * pick.multiplier
+                    )
         return player
 
     @util.time_track(description="Construct Players Gameweek Data")
@@ -154,7 +170,7 @@ class Service:
 
         return players
 
-    def get_current_gameweek_from_dynamodb(self):
+    def get_current_gameweek_from_dynamodb(self) -> int:
         item = self.dynamodb.get_item_by_hash_key("gameweek")
         data = item.get("Item").get("DATA").get("S")
         gameweek_data = json.loads(data)
@@ -225,26 +241,13 @@ class Service:
         start_point_row: int,
         current_reward_col: int,
     ):
-        raw_players_data = [
-            cell.value for cell in self.worksheet.range(self.config.player_data_range)
-        ]
-        players_data = [
-            raw_players_data[i : i + 2]
-            for i in range(
-                0,
-                len(
-                    raw_players_data,
-                ),
-                2,
-            )
-        ]
+        players_data = self.__get_player_data_from_worksheet()
         cell_notations = []
         # update reward of each players
         for i, player_data in enumerate(players_data):
-            player_id, bank_account = player_data
             for player in players:
-                if player.player_id == int(player_id):
-                    player.bank_account = bank_account
+                if player.player_id == int(player_data.player_id):
+                    player.bank_account = player_data.bank_account
                     current_point_row = start_point_row + i
                     cell_notation = util.convert_to_a1_notation(
                         current_point_row, current_reward_col
@@ -352,3 +355,49 @@ class Service:
             player = PlayerGameweekData(**init_dict)
             players.append(player)
         return players
+
+    def __get_player_data_from_worksheet(self):
+        raw_players_data = [
+            cell.value for cell in self.worksheet.range(self.config.player_data_range)
+        ]
+        players_data = [
+            PlayerSheetData(*raw_players_data[i : i + 5])
+            for i in range(
+                0,
+                len(
+                    raw_players_data,
+                ),
+                5,
+            )
+        ]
+        return players_data
+
+    async def list_player_gameweek_picks(self, gameweek: int):
+        players_data = self.__get_player_data_from_worksheet()
+        futures = []
+        player_picks_dict = {}
+        for player_data in players_data:
+            logger.info(player_data)
+            future = asyncio.ensure_future(
+                self.fpl_adapter.get_player_team_by_id(
+                    player_id=player_data.player_id, gameweek=gameweek
+                )
+            )
+            futures.append(future)
+            player_picks_dict[player_data.team_name] = []
+        results: List[FantasyTeam] = await asyncio.gather(*futures)
+        bootstrap_data = await self.fpl_adapter.get_bootstrap()
+        elements = bootstrap_data.elements
+        players_gameweek_picks: List[PlayerGameweekPicksData] = []
+        for r, player_data in zip(results, players_data):
+            picks: List[BootstrapElement] = []
+            for pick in r.picks:
+                if pick.position > 11:
+                    continue
+                for element in elements:
+                    if element.id == pick.element:
+                        picks.append(element)
+            players_gameweek_picks.append(
+                PlayerGameweekPicksData(player=player_data, picked_elements=picks)
+            )
+        return players_gameweek_picks

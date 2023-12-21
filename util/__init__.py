@@ -1,12 +1,9 @@
+import os
 import time
 import asyncio
 import random
 import functools
 from loguru import logger
-
-
-def is_lambda():
-    return __name__ == "lambda_function"
 
 
 def time_track(func=None, description: str = ""):
@@ -82,5 +79,4 @@ __all__ = [
     "add_noise",
     "is_equal_float",
     "convert_to_a1_notation",
-    "is_lambda",
 ]

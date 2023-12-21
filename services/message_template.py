@@ -1,6 +1,12 @@
 import math
-from typing import List, Optional
-from models import PlayerGameweekData, PlayerRevenue, FPLEventStatusResponse
+from typing import List, Optional, Dict
+from models import (
+    PlayerGameweekData,
+    PlayerRevenue,
+    FPLEventStatusResponse,
+    PlayerGameweekPicksData,
+)
+from adapter import FPLAdapter
 
 
 class Color:
@@ -78,7 +84,7 @@ class GameweekReminderMessage(_CommonMessage):
         return message
 
 
-class GameweekResultCarouselMessage:
+class CarouselMessage:
     def __init__(self, messages):
         self.messages = messages
 
@@ -316,3 +322,88 @@ class RevenueMessage(_CommonMessage):
             message["body"]["contents"].append(content)
 
         return message
+
+
+class PlayerGameweekPickMessage:
+    def __init__(self, gameweek: int, player_data: PlayerGameweekPicksData):
+        self.__player_data = player_data
+        self.__gameweek = gameweek
+
+    def build(self):
+        player = self.__player_data.player
+        picks = self.__player_data.picked_elements
+        container = {
+            "type": "bubble",
+            "size": "giga",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [],
+                "backgroundColor": "#393646",
+            },
+        }
+
+        contents: List[Dict] = container["body"]["contents"]
+
+        contents.append(
+            {
+                "type": "text",
+                "color": Color.TOPIC,
+                "weight": "bold",
+                "size": "xxl",
+                "text": f"Gameweek {self.__gameweek}",
+            }
+        )
+        contents.append(
+            {
+                "type": "text",
+                "color": Color.TOPIC,
+                "weight": "bold",
+                "size": "xl",
+                "text": player.team_name,
+                "margin": "xl",
+            }
+        )
+
+        # add separator
+        contents.append({"type": "separator"})
+
+        for i, pick in enumerate(reversed(picks)):
+            image_url = FPLAdapter.get_element_image_url(element_code=pick.code)
+            content = {
+                "type": "box",
+                "layout": "horizontal",
+                "contents": [
+                    {"type": "image", "url": image_url, "size": "xxs", "flex": 0},
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "margin": "xl",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "size": "md",
+                                "color": Color.NORMAL,
+                                "text": f"{pick.first_name} {pick.second_name}",
+                                "flex": 0,
+                                "align": "start",
+                            },
+                            {
+                                "type": "text",
+                                "size": "xs",
+                                "color": Color.NORMAL,
+                                "text": pick.news
+                                if pick.news is not None and pick.news != ""
+                                else "-",
+                                "flex": 0,
+                                "align": "start",
+                            },
+                        ],
+                    },
+                ],
+            }
+            contents.append(content)
+            if i < len(picks) - 1:
+                contents.append({"type": "separator"})
+
+        return container

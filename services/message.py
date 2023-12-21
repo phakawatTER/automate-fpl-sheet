@@ -6,7 +6,8 @@ from .message_template import (
     GameweekResultMessage,
     RevenueMessage,
     GameweekReminderMessage,
-    GameweekResultCarouselMessage,
+    CarouselMessage,
+    PlayerGameweekPickMessage,
 )
 
 
@@ -78,7 +79,25 @@ class MessageService:
             )
             messages.append(m.build())
 
-        message = GameweekResultCarouselMessage(messages=messages).build()
+        message = CarouselMessage(messages=messages).build()
         self.bot.send_flex_message(
             flex_message=message, alt_text="Gameweek Results", group_id=group_id
+        )
+
+    def send_carousel_players_gameweek_picks(
+        self,
+        gameweek: int,
+        player_gameweek_picks: List[models.PlayerGameweekPicksData],
+        group_id: str,
+    ):
+        messages = []
+        for p in player_gameweek_picks:
+            message = PlayerGameweekPickMessage(gameweek=gameweek, player_data=p)
+            messages.append(message.build())
+
+        message = CarouselMessage(messages=messages)
+        self.bot.send_flex_message(
+            flex_message=message.build(),
+            alt_text=f"Player Gameweek {gameweek} Picks",
+            group_id=group_id,
         )

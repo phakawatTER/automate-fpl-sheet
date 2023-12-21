@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
+from .bootstrap import BootstrapElement
 
 
 @dataclass
@@ -20,3 +21,18 @@ class PlayerGameweekData:
 class PlayerRevenue:
     name: str
     revenue: float
+
+
+@dataclass
+class PlayerSheetData:
+    player_id: int
+    bank_account: str
+    season_rank: int
+    name: str
+    team_name: str
+
+
+@dataclass
+class PlayerGameweekPicksData:
+    player: PlayerSheetData
+    picked_elements: List[BootstrapElement]
