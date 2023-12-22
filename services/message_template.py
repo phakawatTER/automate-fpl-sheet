@@ -366,13 +366,14 @@ class PlayerGameweekPickMessage:
         )
 
         # add separator
-        contents.append({"type": "separator"})
+        contents.append({"type": "separator", "margin": "xxl"})
 
         for i, pick in enumerate(reversed(picks)):
             image_url = FPLAdapter.get_element_image_url(element_code=pick.code)
             content = {
                 "type": "box",
                 "layout": "horizontal",
+                "margin": "xl" if i == 0 else "sm",
                 "contents": [
                     {"type": "image", "url": image_url, "size": "xxs", "flex": 0},
                     {

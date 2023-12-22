@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Union
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 
 
 @dataclass
@@ -218,5 +218,7 @@ class MatchFixture:
         self.kickoff_time = (
             self.kickoff_time
             if isinstance(self.kickoff_time, datetime)
-            else datetime(self.kickoff_time, "%Y-%m-%dT%H:%M:%SZ")
+            else datetime.strptime(self.kickoff_time, "%Y-%m-%dT%H:%M:%SZ").replace(
+                tzinfo=timezone.utc
+            )
         )

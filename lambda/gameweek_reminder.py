@@ -1,7 +1,7 @@
 import os
 import sys
 import asyncio
-from datetime import timedelta, datetime, timezone
+from datetime import timedelta, datetime
 
 from boto3.session import Session
 from oauth2client.service_account import ServiceAccountCredentials
@@ -14,7 +14,6 @@ from services import FPLService, MessageService
 from adapter import S3Downloader, GoogleSheet, StateMachine
 from config import Config
 from models import MatchFixture
-
 
 GROUP_ID = "C6402ad4c1937733c7db4e3ff7181287c"
 LINE_UP_STATEMACHINE_ARN = "arn:aws:states:ap-southeast-1:661296166047:stateMachine:FPLLineUpNotificationStateMachine"
@@ -44,23 +43,22 @@ async def execute():
             earliest_match = fixture
         elif fixture.kickoff_time < earliest_match.kickoff_time:
             earliest_match = fixture
-    time_to_subtract = timedelta(hours=5)
+    time_to_subtract = timedelta(
+        hours=8
+    )  # should remind 8 hours before the first match of gameweek
     time_to_remind = earliest_match.kickoff_time - time_to_subtract
-    now = datetime.utcnow()
+    now = datetime.utcnow().astimezone()
     should_remind = now >= time_to_remind
-
     latest_gameweek = fpl_service.get_current_gameweek_from_dynamodb()
-
     if current_gameweek != latest_gameweek and should_remind:
         message_service = MessageService(config)
         message_service.send_gameweek_reminder_message(
             gameweek=current_gameweek, group_id=GROUP_ID
         )
-
         fpl_service.update_gameweek(gameweek=current_gameweek)
-
-        time_to_remind = earliest_match.kickoff_time - timedelta(hours=2)
-        time_to_remind = time_to_remind.replace(microsecond=0, tzinfo=timezone.utc)
+        # notify line-up flex message when the first match of gameweek is played
+        time_to_remind = earliest_match.kickoff_time
+        time_to_remind = time_to_remind.replace(microsecond=0)
         sfn.start_execution(
             state_machine_arn=LINE_UP_STATEMACHINE_ARN,
             input_data={
@@ -73,3 +71,7 @@ async def execute():
 def handler(event, context):
     loop = asyncio.get_event_loop()
     return loop.run_until_complete(execute())
+
+
+if __name__ == "__main__":
+    asyncio.run(execute())
