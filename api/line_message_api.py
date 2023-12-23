@@ -18,6 +18,10 @@ from config.config import Config
 PLOT_GENERATOR_FUNCTION_NAME = "FPLPlotGenerator"
 
 
+class HelperHandlerActionGroup:
+    LIST_COMMANDS = "LIST_COMMANDS"
+
+
 class MessageHandlerActionGroup:
     UPDATE_FPL_TABLE = "UPDATE_FPL_TABLE"
     BATCH_UPDATE_FPL_TABLE = "BATCH_UPDATE_FPL_TABLE"
@@ -25,9 +29,20 @@ class MessageHandlerActionGroup:
     GENERATE_GAMEWEEKS_PLOT = "GENERATE_GAMEWEEKS_PLOT"
     GET_PLAYER_GW_PICKS = "GET_PLAYER_GW_PICKS"
 
+    @staticmethod
+    def get_commands():
+        return {
+            MessageHandlerActionGroup.UPDATE_FPL_TABLE: "Update/Get FPL table of given gameweek",
+            MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE: "Batch update/get FPL table",
+            MessageHandlerActionGroup.GET_PLAYERS_REVENUES: "Get cummulative revenues",
+            MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT: "Generate cummulative revenue over gameweeks",
+            MessageHandlerActionGroup.GET_PLAYER_GW_PICKS: "List players's first 11 picks of given gameweek",
+        }
+
 
 class LineMessageAPI:
     PATTERN_ACTIONS = {
+        r"list (cmd|commands)": HelperHandlerActionGroup.LIST_COMMANDS,
         r"get (gw|gameweek) (\d+-\d+)": MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE,
         r"get (gw|gameweek) (\d+)": MessageHandlerActionGroup.UPDATE_FPL_TABLE,
         r"get (revenue|rev)": MessageHandlerActionGroup.GET_PLAYERS_REVENUES,
@@ -126,25 +141,54 @@ class LineMessageAPI:
                                 self.__handle_players_gameweek_picks
                             )(gameweek=gameweek, group_id=source.group_id)
                         )
-                    else:
-                        pass
+                    elif action == HelperHandlerActionGroup.LIST_COMMANDS:
+                        self.__run_in_error_wrapper(self.__handle_list_bot_commands)(
+                            group_id=source.group_id
+                        )
 
                     break
 
         return self.__app
 
     def __run_in_error_wrapper(self, callback):
-        async def wrapped_func(*args, **kwargs):
+        def construct_error_message(e: Exception) -> str:
+            return f"❌ Oops...something went wrong with error: {e}"
+
+        def wrapped_sync(*args, **kwargs):
             try:
-                return await callback(*args, **kwargs)
+                return callback(*args, **kwargs)
             except Exception as e:
                 self.__message_service.send_text_message(
-                    f"Oops...something went wrong with error: {e}",
+                    text=construct_error_message(e),
                     group_id=kwargs["group_id"],
                 )
                 abort(e)
 
-        return wrapped_func
+        async def wrapped_async(*args, **kwargs):
+            try:
+                return await callback(*args, **kwargs)
+            except Exception as e:
+                self.__message_service.send_text_message(
+                    text=construct_error_message(e),
+                    group_id=kwargs["group_id"],
+                )
+                abort(e)
+
+        if asyncio.iscoroutinefunction(callback):
+            return wrapped_async
+        return wrapped_sync
+
+    def __handle_list_bot_commands(self, group_id: str):
+        commands = MessageHandlerActionGroup.get_commands()
+        commands_map_list: List[tuple[str]] = []
+        for cmd, desc in commands.items():
+            for pattern, _cmd in LineMessageAPI.PATTERN_ACTIONS.items():
+                if cmd == _cmd:
+                    commands_map_list.append((desc, pattern.replace("|", " | ")))
+                    break
+        self.__message_service.send_bot_instruction_message(
+            group_id=group_id, commands_map_list=commands_map_list
+        )
 
     async def __handle_batch_update_fpl_table(
         self, from_gameweek: int, to_gameweek: int, group_id

@@ -398,6 +398,8 @@ class Service:
                         __element.pick_position = pick.position
                         if pick.position > 11:
                             __element.is_subsituition = True
+                        __element.is_captain = pick.is_captain
+                        __element.is_vice_captain = pick.is_vice_captain
                         picks.append(__element)
             players_gameweek_picks.append(
                 PlayerGameweekPicksData(player=player_data, picked_elements=picks)

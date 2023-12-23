@@ -55,8 +55,39 @@ EMOJI_NUMBER_MAP = {
     "9": "9️⃣",
 }
 
+COMMON_FOOTER = {
+    "type": "box",
+    "layout": "vertical",
+    "action": {"type": "uri", "uri": "https://github.com/phakawatTER"},
+    "contents": [
+        {
+            "type": "box",
+            "layout": "horizontal",
+            "justifyContent": "center",
+            "margin": "md",
+            "contents": [
+                {
+                    "type": "image",
+                    "url": "https://cdn-icons-png.flaticon.com/512/25/25231.png",
+                    "size": "20px",
+                    "flex": 0,
+                },
+                {
+                    "type": "text",
+                    "text": "phakawatTER 🚀",
+                    "size": "sm",
+                    "margin": "sm",
+                    "flex": 0,
+                },
+            ],
+        },
+    ],
+}
 
-class _CommonMessage:
+
+class _CommonHero:
+    BACKGROUND_COLOR = "#393646"
+
     def __init__(self, sheet_url: str):
         self.container = {
             "type": "bubble",
@@ -73,15 +104,16 @@ class _CommonMessage:
                 "type": "box",
                 "layout": "vertical",
                 "contents": [],
-                "backgroundColor": "#393646",
+                "backgroundColor": _CommonHero.BACKGROUND_COLOR,
             },
+            "footer": COMMON_FOOTER,
         }
 
     def _get_container(self):
         return self.container
 
 
-class GameweekReminderMessage(_CommonMessage):
+class GameweekReminderMessage(_CommonHero):
     def __init__(self, sheet_url: str, gameweek: int):
         super().__init__(sheet_url=sheet_url)
         self.gameweek = gameweek
@@ -122,7 +154,7 @@ class CarouselMessage:
         return message
 
 
-class GameweekResultMessage(_CommonMessage):
+class GameweekResultMessage(_CommonHero):
     def __init__(
         self,
         players: List[PlayerGameweekData],
@@ -274,7 +306,7 @@ class GameweekResultMessage(_CommonMessage):
         return message
 
 
-class RevenueMessage(_CommonMessage):
+class RevenueMessage(_CommonHero):
     def __init__(self, sheet_url: str, players_revenues: List[PlayerRevenue]):
         super().__init__(sheet_url=sheet_url)
         self.players_revenues = players_revenues
@@ -463,6 +495,7 @@ class PlayerGameweekPickMessageV2:
                     },
                 ],
             },
+            "footer": COMMON_FOOTER,
         }
         container_contents: List[dict] = container["body"]["contents"]
 
@@ -562,6 +595,11 @@ class PlayerGameweekPickMessageV2:
                             }
                         ],
                     },
+                ],
+            }
+
+            if level > 0:
+                c["contents"].append(
                     {
                         "type": "image",
                         "url": icon_url,
@@ -569,8 +607,92 @@ class PlayerGameweekPickMessageV2:
                         "size": "15px",
                         "offsetEnd": "0px",
                     },
-                ],
-            }
+                )
+            if p.is_captain or p.is_vice_captain:
+                c["contents"].append(
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "position": "absolute",
+                        "offsetEnd": "0px",
+                        "offsetTop": "0px" if level == 0 else "20px",
+                        "backgroundColor": "#000000",
+                        "cornerRadius": "xxl",
+                        "width": "17px",
+                        "height": "17px",
+                        "justifyContent": "center",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "align": "center",
+                                "text": "C" if p.is_captain else "V",
+                                "color": Color.TOPIC,
+                                "size": "xxs",
+                                "weight": "bold",
+                            }
+                        ],
+                    }
+                )
             contents.append(c)
 
         return content
+
+
+class BotInstructionMessage(_CommonHero):
+    def __init__(self, sheet_url: str, commands_map_list: List[tuple[str]]):
+        super().__init__(sheet_url=sheet_url)
+        self.commands_map_list = commands_map_list
+
+    def build(self):
+        message = self.container["body"]["contents"]
+        message.append(
+            {
+                "type": "text",
+                "text": "🚀Luka Bot CMD Instructions",
+                "size": "xl",
+                "color": Color.TOPIC,
+                "weight": "bold",
+            }
+        )
+        info = "These are the available command patterns where '(d+)' represents a positive integer. Please note that the specified integer(s) must be within the range of possible gameweeks, which is from 1 to 38."
+        message.append(
+            {
+                "type": "text",
+                "margin": "md",
+                "wrap": True,
+                "text": info,
+                "color": Color.NORMAL,
+            }
+        )
+        message.append(
+            {
+                "type": "separator",
+                "margin": "xl",
+            }
+        )
+
+        for desc, pattern in self.commands_map_list:
+            m = {
+                "type": "box",
+                "layout": "vertical",
+                "margin": "md",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"{desc}:",
+                        "weight": "bold",
+                        "flex": 0,
+                        "color": Color.TOPIC,
+                    },
+                    {
+                        "type": "text",
+                        "wrap": True,
+                        "text": " " + pattern,
+                        "flex": 0,
+                        "color": Color.NORMAL,
+                    },
+                ],
+            }
+            message.append(m)
+
+        return self.container

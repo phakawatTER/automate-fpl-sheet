@@ -8,6 +8,7 @@ from .message_template import (
     GameweekReminderMessage,
     CarouselMessage,
     PlayerGameweekPickMessageV2,
+    BotInstructionMessage,
 )
 
 STEP_SIZE = 4
@@ -23,6 +24,13 @@ class MessageService:
 
     def send_image_messsage(self, image_url: str, group_id: str):
         self.bot.send_image_message(image_url=image_url, group_id=group_id)
+
+    def send_flex_message(
+        self, flex_message: dict, group_id: str, alt_text: str = "Flex Message"
+    ):
+        self.bot.send_flex_message(
+            flex_message=flex_message, group_id=group_id, alt_text=alt_text
+        )
 
     def send_gameweek_result_message(
         self,
@@ -59,7 +67,7 @@ class MessageService:
     def send_gameweek_reminder_message(self, gameweek: int, group_id: str):
         message = GameweekReminderMessage(sheet_url=self.sheet_url, gameweek=gameweek)
         self.bot.send_flex_message(
-            group_id,
+            group_id=group_id,
             flex_message=message.build(),
             alt_text=f"Gameweek {gameweek} is coming",
         )
@@ -116,3 +124,13 @@ class MessageService:
                 alt_text=f"Player Gameweek {gameweek} Picks",
                 group_id=group_id,
             )
+
+    def send_bot_instruction_message(
+        self, group_id: str, commands_map_list: List[tuple[str]]
+    ):
+        message = BotInstructionMessage(
+            sheet_url=self.sheet_url, commands_map_list=commands_map_list
+        ).build()
+        self.bot.send_flex_message(
+            group_id=group_id, flex_message=message, alt_text="Luka Bot instructions"
+        )

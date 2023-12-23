@@ -149,8 +149,10 @@ class BootstrapElement:
 
     # manually constructed fields
     position: Optional[PlayerPosition] = field(default=None)
-    is_subsituition: bool = field(default=False)
-    pick_position: int = field(default=0)
+    is_subsituition: Optional[bool] = field(default=None)
+    pick_position: Optional[int] = field(default=None)
+    is_captain: Optional[bool] = field(default=None)
+    is_vice_captain: Optional[bool] = field(default=None)
 
     def __post_init__(self):
         positions = [
