@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
+from enum import Enum
 
 
 @dataclass
@@ -12,6 +13,13 @@ class ChipPlay:
 class TopElementInfo:
     id: int
     points: int
+
+
+class PlayerPosition(Enum):
+    GOAL_KEEPER = "GKP"
+    DEFENDER = "DEF"
+    MIDFIELDER = "MID"
+    FORWARD = "FWD"
 
 
 @dataclass
@@ -138,6 +146,20 @@ class BootstrapElement:
     selected_rank_type: int
     starts_per_90: int
     clean_sheets_per_90: int
+
+    # manually constructed fields
+    position: Optional[PlayerPosition] = field(default=None)
+    is_subsituition: bool = field(default=False)
+    pick_position: int = field(default=0)
+
+    def __post_init__(self):
+        positions = [
+            PlayerPosition.GOAL_KEEPER,
+            PlayerPosition.DEFENDER,
+            PlayerPosition.MIDFIELDER,
+            PlayerPosition.FORWARD,
+        ]
+        self.position = positions[self.element_type - 1]
 
 
 @dataclass

@@ -21,7 +21,7 @@ from .model import (
     PlayerSheetData,
 )
 
-from .bootstrap import Bootstrap, BootstrapElement, BootstrapGameweek
+from .bootstrap import Bootstrap, BootstrapElement, BootstrapGameweek, PlayerPosition
 
 __all__ = [
     "FantasyTeam",
@@ -44,4 +44,5 @@ __all__ = [
     "BootstrapGameweek",
     "PlayerGameweekPicksData",
     "PlayerSheetData",
+    "PlayerPosition",
 ]

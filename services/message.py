@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from line import LineBot
 import models
 from config import Config
@@ -7,8 +7,10 @@ from .message_template import (
     RevenueMessage,
     GameweekReminderMessage,
     CarouselMessage,
-    PlayerGameweekPickMessage,
+    PlayerGameweekPickMessageV2,
 )
+
+STEP_SIZE = 4
 
 
 class MessageService:
@@ -64,25 +66,35 @@ class MessageService:
 
     def send_carousel_gameweek_results_message(
         self,
-        gameweeks_data: List[
-            Tuple[List[models.PlayerGameweekData], models.FPLEventStatusResponse, int]
-        ],
+        gameweek_players: List[List[models.PlayerGameweekData]],
+        event_statuses: List[Optional[models.FPLEventStatusResponse]],
+        gameweeks: List[int],
         group_id: str,
     ):
-        messages = []
-        for players, event_status, gameweek in gameweeks_data:
-            m = GameweekResultMessage(
-                players=players,
-                event_status=event_status,
-                gameweek=gameweek,
-                sheet_url=self.sheet_url,
+        step_size = 8
+        for i in range(0, len(gameweek_players), step_size):
+            j = i + step_size
+            if j > len(gameweek_players):
+                j = len(gameweek_players)
+            data = zip(
+                gameweek_players[i:j],
+                event_statuses[i:j],
+                gameweeks[i:j],
             )
-            messages.append(m.build())
+            messages = []
+            for players, event_status, gameweek in data:
+                m = GameweekResultMessage(
+                    players=players,
+                    event_status=event_status,
+                    gameweek=gameweek,
+                    sheet_url=self.sheet_url,
+                )
+                messages.append(m.build())
 
-        message = CarouselMessage(messages=messages).build()
-        self.bot.send_flex_message(
-            flex_message=message, alt_text="Gameweek Results", group_id=group_id
-        )
+            message = CarouselMessage(messages=messages).build()
+            self.bot.send_flex_message(
+                flex_message=message, alt_text="Gameweek Results", group_id=group_id
+            )
 
     def send_carousel_players_gameweek_picks(
         self,
@@ -90,14 +102,17 @@ class MessageService:
         player_gameweek_picks: List[models.PlayerGameweekPicksData],
         group_id: str,
     ):
-        messages = []
-        for p in player_gameweek_picks:
-            message = PlayerGameweekPickMessage(gameweek=gameweek, player_data=p)
-            messages.append(message.build())
-
-        message = CarouselMessage(messages=messages)
-        self.bot.send_flex_message(
-            flex_message=message.build(),
-            alt_text=f"Player Gameweek {gameweek} Picks",
-            group_id=group_id,
-        )
+        for i in range(0, len(player_gameweek_picks), STEP_SIZE):
+            j = i + STEP_SIZE
+            if j > len(player_gameweek_picks):
+                j = len(player_gameweek_picks)
+            messages = []
+            for p in player_gameweek_picks[i:j]:
+                message = PlayerGameweekPickMessageV2(gameweek=gameweek, player_picks=p)
+                messages.append(message.build())
+            message = CarouselMessage(messages=messages)
+            self.bot.send_flex_message(
+                flex_message=message.build(),
+                alt_text=f"Player Gameweek {gameweek} Picks",
+                group_id=group_id,
+            )

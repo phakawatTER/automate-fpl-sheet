@@ -5,8 +5,32 @@ from models import (
     PlayerRevenue,
     FPLEventStatusResponse,
     PlayerGameweekPicksData,
+    PlayerPosition,
+    BootstrapElement,
 )
 from adapter import FPLAdapter
+
+
+def _get_chance_of_playing_level(chance: int) -> int:
+    level = 0
+    if chance == 100 or chance is None:
+        level = 0
+    elif 50 < chance <= 75:
+        level = 1
+    elif 25 < chance <= 50:
+        level = 2
+    elif 0 < chance <= 25:
+        level = 3
+    else:
+        level = 4
+    return level
+
+
+class Icon:
+    INFO = "https://cdn-icons-png.flaticon.com/128/151/151776.png"
+    WARNING = "https://cdn-icons-png.flaticon.com/128/1008/1008769.png"
+    WARNING2 = "https://cdn-icons-png.flaticon.com/128/1680/1680012.png"
+    DANGER = "https://cdn-icons-png.flaticon.com/128/564/564619.png"
 
 
 class Color:
@@ -14,6 +38,8 @@ class Color:
     SUCCESS = "#62d271"
     DANGER = "#EF4040"
     NORMAL = "#aaaaaa"
+    WARNING = "#FFE65B"
+    WARNING2 = "#FFAB1B"
 
 
 EMOJI_NUMBER_MAP = {
@@ -408,3 +434,143 @@ class PlayerGameweekPickMessage:
                 contents.append({"type": "separator"})
 
         return container
+
+
+class PlayerGameweekPickMessageV2:
+    def __init__(self, gameweek: int, player_picks: PlayerGameweekPicksData):
+        self.player_picks = player_picks
+        self.gameweek = gameweek
+
+    def build(self):
+        container = {
+            "type": "bubble",
+            "size": "giga",
+            "body": {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "size": "xxl",
+                        "text": f"Gameweek {self.gameweek}",
+                        "weight": "bold",
+                    },
+                    {
+                        "type": "text",
+                        "size": "md",
+                        "text": self.player_picks.player.team_name,
+                        "color": Color.NORMAL,
+                    },
+                ],
+            },
+        }
+        container_contents: List[dict] = container["body"]["contents"]
+
+        position_map: Dict[PlayerPosition, List[BootstrapElement]] = {
+            PlayerPosition.GOAL_KEEPER: [],
+            PlayerPosition.DEFENDER: [],
+            PlayerPosition.MIDFIELDER: [],
+            PlayerPosition.FORWARD: [],
+        }
+
+        subs: List[BootstrapElement] = []
+        for p in self.player_picks.picked_elements:
+            if not p.is_subsituition:
+                position_map[p.position].append(p)
+            else:
+                subs.append(p)
+
+        # render by each position on field
+        for _, players in position_map.items():
+            content = self.__construct_player_position_section(players)
+            container_contents.append(content)
+        # render subs
+        subs_topic = {
+            "type": "box",
+            "layout": "vertical",
+            "margin": "xxl",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "Subsitutions",
+                    "size": "md",
+                    "color": Color.NORMAL,
+                },
+            ],
+        }
+        separator = {"type": "separator"}
+        container_contents.append(subs_topic)
+        container_contents.append(separator)
+        container_contents.append(self.__construct_player_position_section(subs))
+
+        return container
+
+    def __construct_player_position_section(self, players: List[BootstrapElement]):
+        content = {
+            "type": "box",
+            "margin": "xl",
+            "layout": "horizontal",
+            "justifyContent": "center",
+            "contents": [],
+        }
+        contents = content["contents"]
+        for p in players:
+            background_color = Color.SUCCESS
+            level = _get_chance_of_playing_level(p.chance_of_playing_this_round)
+            colors = [
+                Color.SUCCESS,
+                Color.WARNING,
+                Color.WARNING2,
+                Color.WARNING2,
+                Color.DANGER,
+            ]
+            background_color = colors[level]
+
+            icon_urls = [
+                Icon.INFO,
+                Icon.WARNING,
+                Icon.WARNING2,
+                Icon.WARNING2,
+                Icon.DANGER,
+            ]
+            icon_url = icon_urls[level]
+
+            c = {
+                "type": "box",
+                "layout": "vertical",
+                "margin": "lg",
+                "maxWidth": "85px",
+                "contents": [
+                    {
+                        "type": "image",
+                        "size": "xs",
+                        "url": FPLAdapter.get_element_image_url(p.code),
+                    },
+                    {
+                        "type": "box",
+                        "layout": "baseline",
+                        "paddingAll": "sm",
+                        "backgroundColor": background_color,
+                        "cornerRadius": "md",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": p.web_name,
+                                "size": "xxs",
+                                "align": "center",
+                                "color": "#FFFFFF",
+                            }
+                        ],
+                    },
+                    {
+                        "type": "image",
+                        "url": icon_url,
+                        "position": "absolute",
+                        "size": "15px",
+                        "offsetEnd": "0px",
+                    },
+                ],
+            }
+            contents.append(c)
+
+        return content

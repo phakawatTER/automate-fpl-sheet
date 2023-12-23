@@ -1,6 +1,6 @@
 import json
 import asyncio
-from dataclasses import dataclass
+from dataclasses import asdict
 from typing import Dict, List, Optional
 from datetime import datetime
 from loguru import logger
@@ -374,10 +374,9 @@ class Service:
 
     async def list_player_gameweek_picks(self, gameweek: int):
         players_data = self.__get_player_data_from_worksheet()
-        futures = []
         player_picks_dict = {}
+        futures = []
         for player_data in players_data:
-            logger.info(player_data)
             future = asyncio.ensure_future(
                 self.fpl_adapter.get_player_team_by_id(
                     player_id=player_data.player_id, gameweek=gameweek
@@ -392,12 +391,16 @@ class Service:
         for r, player_data in zip(results, players_data):
             picks: List[BootstrapElement] = []
             for pick in r.picks:
-                if pick.position > 11:
-                    continue
                 for element in elements:
                     if element.id == pick.element:
-                        picks.append(element)
+                        # need to create new instance to avoid mutation
+                        __element = BootstrapElement(**asdict(element))
+                        __element.pick_position = pick.position
+                        if pick.position > 11:
+                            __element.is_subsituition = True
+                        picks.append(__element)
             players_gameweek_picks.append(
                 PlayerGameweekPicksData(player=player_data, picked_elements=picks)
             )
+
         return players_gameweek_picks
