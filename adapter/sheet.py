@@ -8,8 +8,8 @@ class GoogleSheet:
         self.gc = gspread.authorize(credential)
         self.spreadsheet: Spreadsheet = None
 
-    def open_sheet_by_url(self, spreadsheet_name: str):
-        spreadsheet = self.gc.open_by_url(spreadsheet_name)
+    def open_sheet_by_url(self, url: str):
+        spreadsheet = self.gc.open_by_url(url)
         self.spreadsheet = spreadsheet
         return self
 

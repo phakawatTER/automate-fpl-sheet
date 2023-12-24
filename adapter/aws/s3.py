@@ -1,6 +1,5 @@
 import os
 import errno
-import io
 from typing import Optional
 from botocore.exceptions import NoCredentialsError, BotoCoreError, ClientError
 from boto3.session import Session

@@ -3,38 +3,21 @@ import sys
 import asyncio
 from datetime import timedelta, datetime
 
-from boto3.session import Session
-from oauth2client.service_account import ServiceAccountCredentials
-
 root_directory = os.path.dirname(os.path.abspath(__file__))
 project_directory = os.path.dirname(root_directory)
 sys.path.append(project_directory)
 
-from services import FPLService, MessageService
-from adapter import S3Downloader, GoogleSheet, StateMachine
-from config import Config
 from models import MatchFixture
+from app import App
 
-GROUP_ID = "C6402ad4c1937733c7db4e3ff7181287c"
 LINE_UP_STATEMACHINE_ARN = "arn:aws:states:ap-southeast-1:661296166047:stateMachine:FPLLineUpNotificationStateMachine"
 
 
 async def execute():
-    sess = Session()
-    s3_downloader = S3Downloader(sess, "ds-fpl", "/tmp")
-    sfn = StateMachine(session=sess)
-
-    file_path = s3_downloader.download_file("config.json")
-    config = Config(file_path)
-
-    file_path = s3_downloader.download_file("service_account.json")
-    credential = ServiceAccountCredentials.from_json_keyfile_name(file_path)
-    google_sheet = GoogleSheet(credential=credential)
-    google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
-    fpl_service = FPLService(google_sheet=google_sheet, config=config)
-    gw_status = await fpl_service.get_current_gameweek()
+    app = App()
+    gw_status = await app.fpl_service.get_current_gameweek()
     current_gameweek = gw_status.event
-    current_gameweek_fixtures = await fpl_service.list_gameweek_fixtures(
+    current_gameweek_fixtures = await app.fpl_service.list_gameweek_fixtures(
         gameweek=current_gameweek
     )
     earliest_match: MatchFixture = None
@@ -49,17 +32,22 @@ async def execute():
     time_to_remind = earliest_match.kickoff_time - time_to_subtract
     now = datetime.utcnow().astimezone()
     should_remind = now >= time_to_remind
-    latest_gameweek = fpl_service.get_current_gameweek_from_dynamodb()
+    latest_gameweek = app.fpl_service.get_current_gameweek_from_dynamodb()
     if current_gameweek != latest_gameweek and should_remind:
-        message_service = MessageService(config)
-        message_service.send_gameweek_reminder_message(
-            gameweek=current_gameweek, group_id=GROUP_ID
-        )
-        fpl_service.update_gameweek(gameweek=current_gameweek)
+        line_group_ids = app.firebase_repo.list_line_channels()
+        for group_id in line_group_ids:
+            league_id = app.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
+            league_sheet = app.firebase_repo.get_league_google_sheet(league_id)
+            app.message_service.send_gameweek_reminder_message(
+                gameweek=current_gameweek,
+                group_id=group_id,
+                sheet_url=league_sheet.url,
+            )
+        app.fpl_service.update_gameweek(gameweek=current_gameweek)
         # notify line-up flex message when the first match of gameweek is played
         time_to_remind = earliest_match.kickoff_time
         time_to_remind = time_to_remind.replace(microsecond=0)
-        sfn.start_execution(
+        app.sfn.start_execution(
             state_machine_arn=LINE_UP_STATEMACHINE_ARN,
             input_data={
                 "gameweek": current_gameweek,

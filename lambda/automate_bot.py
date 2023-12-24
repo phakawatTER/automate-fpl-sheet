@@ -1,38 +1,31 @@
 import os
 import sys
 import asyncio
-from boto3.session import Session
-from oauth2client.service_account import ServiceAccountCredentials
 
 root_directory = os.path.dirname(os.path.abspath(__file__))
 project_directory = os.path.dirname(root_directory)
 sys.path.append(project_directory)
 
-from services import FPLService, MessageService
-from adapter import S3Downloader, GoogleSheet
-from config import Config
+from app import App
 
 
 async def execute():
-    sess = Session()
-    s3_downloader = S3Downloader(sess, "ds-fpl", "/tmp")
-
-    file_path = s3_downloader.download_file("config.json")
-    config = Config(file_path)
-
-    file_path = s3_downloader.download_file("service_account.json")
-    credential = ServiceAccountCredentials.from_json_keyfile_name(file_path)
-    google_sheet = GoogleSheet(credential=credential)
-    google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
-    fpl_service = FPLService(google_sheet=google_sheet, config=config)
-    gw_status = await fpl_service.get_current_gameweek()
-    players = await fpl_service.get_or_update_fpl_gameweek_table(gw_status.event)
-
-    message_service = MessageService(config=config)
-    # NOTE: group_id here should be fetched from database. hardcode it for now
-    message_service.send_gameweek_result_message(
-        gw_status.event, players, group_id="C6402ad4c1937733c7db4e3ff7181287c"
-    )
+    app = App()
+    gw_status = await app.fpl_service.get_current_gameweek()
+    line_channel_ids = app.firebase_repo.list_line_channels()
+    for group_id in line_channel_ids:
+        league_id = app.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
+        league_sheet = app.firebase_repo.get_league_google_sheet(league_id)
+        players = await app.fpl_service.get_or_update_fpl_gameweek_table(
+            gw_status.event,
+            league_id,
+        )
+        app.message_service.send_gameweek_result_message(
+            gw_status.event,
+            players,
+            group_id=group_id,
+            sheet_url=league_sheet.url,
+        )
 
     return 0
 
