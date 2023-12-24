@@ -17,6 +17,7 @@ from models import (
     BootstrapElement,
     PlayerGameweekPicksData,
     PlayerSheetData,
+    LiveEventElement,
 )
 import util
 
@@ -134,9 +135,9 @@ class Service:
             players=players,
             start_point_row=START_POINT_ROW,
         )
-
+        should_add_shared_result = await self.__should_add_shared_result()
         # we should update shared reward only when gameweek is end
-        if await self.__should_add_shared_result():
+        if should_add_shared_result:
             # update player's shared reward (duplicated)
             self.__update_players_shared_reward(
                 current_reward_col=current_reward_col, players=players
@@ -372,7 +373,16 @@ class Service:
         ]
         return players_data
 
-    async def list_player_gameweek_picks(self, gameweek: int):
+    async def get_gameweek_live_event(
+        self, gameweek: int
+    ) -> dict[int, LiveEventElement]:
+        response = await self.fpl_adapter.get_gameweek_live_event(gameweek=gameweek)
+        element_map: Dict[int, LiveEventElement] = {}
+        for element in response.elements:
+            element_map[element.id] = element
+        return element_map
+
+    async def __list_fantasy_teams(self, gameweek: int):
         players_data = self.__get_player_data_from_worksheet()
         player_picks_dict = {}
         futures = []
@@ -384,23 +394,38 @@ class Service:
             )
             futures.append(future)
             player_picks_dict[player_data.team_name] = []
+
         results: List[FantasyTeam] = await asyncio.gather(*futures)
+
+        return results, players_data
+
+    @util.time_track(description="List player gameweek picks")
+    async def list_player_gameweek_picks(self, gameweek: int):
+        gameweek_live_event: Dict[
+            int, LiveEventElement
+        ] = await self.get_gameweek_live_event(gameweek=gameweek)
+        fantasy_teams, players_data = await self.__list_fantasy_teams(gameweek=gameweek)
+
         bootstrap_data = await self.fpl_adapter.get_bootstrap()
         elements = bootstrap_data.elements
         players_gameweek_picks: List[PlayerGameweekPicksData] = []
-        for r, player_data in zip(results, players_data):
+
+        for r, player_data in zip(fantasy_teams, players_data):
             picks: List[BootstrapElement] = []
             for pick in r.picks:
                 for element in elements:
                     if element.id == pick.element:
                         # need to create new instance to avoid mutation
-                        __element = BootstrapElement(**asdict(element))
-                        __element.pick_position = pick.position
-                        if pick.position > 11:
-                            __element.is_subsituition = True
-                        __element.is_captain = pick.is_captain
-                        __element.is_vice_captain = pick.is_vice_captain
-                        picks.append(__element)
+                        new_element = BootstrapElement(**asdict(element))
+                        new_element.is_subsituition = pick.position > 11
+                        new_element.pick_position = pick.position
+                        new_element.is_captain = pick.is_captain
+                        new_element.is_vice_captain = pick.is_vice_captain
+                        new_element.total_points = gameweek_live_event[
+                            element.id
+                        ].stats.total_points
+
+                        picks.append(new_element)
             players_gameweek_picks.append(
                 PlayerGameweekPicksData(player=player_data, picked_elements=picks)
             )

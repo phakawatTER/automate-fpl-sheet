@@ -12,6 +12,8 @@ from .fpl_model import (
     FPLEventStatusResponse,
     FPLEventStatus,
     MatchFixture,
+    LiveEventResponse,
+    LiveEventElement,
 )
 
 from .model import (
@@ -45,4 +47,6 @@ __all__ = [
     "PlayerGameweekPicksData",
     "PlayerSheetData",
     "PlayerPosition",
+    "LiveEventResponse",
+    "LiveEventElement",
 ]

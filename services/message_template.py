@@ -42,6 +42,8 @@ class Color:
     WARNING2 = "#FFAB1B"
 
 
+BACKGROUND_COLOR = "#393646"
+
 EMOJI_NUMBER_MAP = {
     "0": "0️⃣",
     "1": "1️⃣",
@@ -86,8 +88,6 @@ COMMON_FOOTER = {
 
 
 class _CommonHero:
-    BACKGROUND_COLOR = "#393646"
-
     def __init__(self, sheet_url: str):
         self.container = {
             "type": "bubble",
@@ -104,7 +104,7 @@ class _CommonHero:
                 "type": "box",
                 "layout": "vertical",
                 "contents": [],
-                "backgroundColor": _CommonHero.BACKGROUND_COLOR,
+                "backgroundColor": BACKGROUND_COLOR,
             },
             "footer": COMMON_FOOTER,
         }
@@ -473,26 +473,110 @@ class PlayerGameweekPickMessageV2:
         self.player_picks = player_picks
         self.gameweek = gameweek
 
+    def __create_background(self):
+        background_url = "https://cdn5.vectorstock.com/i/1000x1000/61/29/football-soccer-field-aerial-view-vector-6886129.jpg"
+        contents = [
+            # top
+            {
+                "type": "image",
+                "url": background_url,
+                "size": "full",
+                "aspectMode": "cover",
+                "aspectRatio": "1:3",
+                "position": "absolute",
+                "align": "start",
+                "gravity": "top",
+                "offsetStart": "0px",
+                "offsetTop": "0px",
+            },
+            {
+                "type": "image",
+                "url": background_url,
+                "size": "full",
+                "aspectMode": "cover",
+                "aspectRatio": "1:3",
+                "position": "absolute",
+                "align": "start",
+                "gravity": "top",
+                "offsetEnd": "0px",
+                "offsetTop": "0px",
+            },
+        ]
+        return contents
+
+    def __construct_header(self):
+        total_points = 0
+        for p in self.player_picks.picked_elements:
+            if not p.is_subsituition:
+                total_points += p.total_points
+        return {
+            "type": "box",
+            "layout": "horizontal",
+            "backgroundColor": BACKGROUND_COLOR,
+            "contents": [
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "flex": 1,
+                    "justifyContent": "center",
+                    "contents": [
+                        {
+                            "type": "image",
+                            "url": "https://www.premierleague.com/resources/rebrand/v7.129.2/i/elements/pl-main-logo.png",
+                            "size": "xs",
+                        },
+                    ],
+                },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "flex": 3,
+                    "contents": [
+                        {
+                            "type": "text",
+                            "size": "xl",
+                            "text": f"Gameweek {self.gameweek}",
+                            "weight": "bold",
+                            "color": Color.TOPIC,
+                        },
+                        {
+                            "type": "text",
+                            "size": "md",
+                            "text": self.player_picks.player.team_name,
+                            "color": Color.NORMAL,
+                        },
+                    ],
+                },
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "flex": 1,
+                    "justifyContent": "center",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "align": "end",
+                            "text": f"{total_points}",
+                            "size": "xxl",
+                            "weight": "bold",
+                            "color": Color.TOPIC if total_points >= 0 else Color.DANGER,
+                        },
+                    ],
+                },
+            ],
+        }
+
     def build(self):
         container = {
             "type": "bubble",
             "size": "giga",
+            "header": self.__construct_header(),
             "body": {
                 "type": "box",
                 "layout": "vertical",
+                "backgroundColor": BACKGROUND_COLOR,
                 "contents": [
-                    {
-                        "type": "text",
-                        "size": "xxl",
-                        "text": f"Gameweek {self.gameweek}",
-                        "weight": "bold",
-                    },
-                    {
-                        "type": "text",
-                        "size": "md",
-                        "text": self.player_picks.player.team_name,
-                        "color": Color.NORMAL,
-                    },
+                    *self.__create_background(),
                 ],
             },
             "footer": COMMON_FOOTER,
@@ -526,8 +610,9 @@ class PlayerGameweekPickMessageV2:
                 {
                     "type": "text",
                     "text": "Subsitutions",
+                    "weight": "bold",
                     "size": "md",
-                    "color": Color.NORMAL,
+                    "color": Color.TOPIC,
                 },
             ],
         }
@@ -544,14 +629,15 @@ class PlayerGameweekPickMessageV2:
             "margin": "xl",
             "layout": "horizontal",
             "justifyContent": "center",
+            "backgroundColor": "#ff000000",
             "contents": [],
         }
         contents = content["contents"]
         for p in players:
-            background_color = Color.SUCCESS
             level = _get_chance_of_playing_level(p.chance_of_playing_this_round)
             colors = [
-                Color.SUCCESS,
+                # Color.SUCCESS,
+                "#37003C",
                 Color.WARNING,
                 Color.WARNING2,
                 Color.WARNING2,
@@ -573,6 +659,8 @@ class PlayerGameweekPickMessageV2:
                 "layout": "vertical",
                 "margin": "lg",
                 "maxWidth": "85px",
+                "position": "relative",
+                "cornerRadius": "md",
                 "contents": [
                     {
                         "type": "image",
@@ -584,14 +672,28 @@ class PlayerGameweekPickMessageV2:
                         "layout": "baseline",
                         "paddingAll": "sm",
                         "backgroundColor": background_color,
-                        "cornerRadius": "md",
                         "contents": [
                             {
                                 "type": "text",
                                 "text": p.web_name,
                                 "size": "xxs",
                                 "align": "center",
-                                "color": "#FFFFFF",
+                                "color": "#FFFFFF" if level == 0 else "#000000",
+                            }
+                        ],
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "justifyContent": "center",
+                        "backgroundColor": "#FFFFFFAA",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": f"{p.total_points}",
+                                "weight": "bold",
+                                "size": "xs",
+                                "align": "center",
                             }
                         ],
                     },

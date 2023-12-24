@@ -222,3 +222,61 @@ class MatchFixture:
                 tzinfo=timezone.utc
             )
         )
+
+
+@dataclass
+class PlayerStats:
+    minutes: int
+    goals_scored: int
+    assists: int
+    clean_sheets: int
+    goals_conceded: int
+    own_goals: int
+    penalties_saved: int
+    penalties_missed: int
+    yellow_cards: int
+    red_cards: int
+    saves: int
+    bonus: int
+    bps: int
+    influence: str
+    creativity: str
+    threat: str
+    ict_index: str
+    starts: int
+    expected_goals: str
+    expected_assists: str
+    expected_goal_involvements: str
+    expected_goals_conceded: str
+    total_points: int
+    in_dreamteam: bool
+
+    @staticmethod
+    def create_from_dict(data: dict):
+        return PlayerStats(**data)
+
+
+@dataclass
+class LiveEventElement:
+    id: int
+    stats: PlayerStats
+    explain: any
+
+    @staticmethod
+    def create_from_dict(data: dict):
+        return LiveEventElement(
+            id=data.get("id"),
+            explain=data.get("explain"),
+            stats=PlayerStats.create_from_dict(data=data.get("stats")),
+        )
+
+
+@dataclass
+class LiveEventResponse:
+    elements: List[LiveEventElement]
+
+    @staticmethod
+    def create_from_dict(data: List[dict]):
+        return LiveEventResponse(
+            elements=[LiveEventElement.create_from_dict(d) for d in data]
+        )

@@ -1,5 +1,5 @@
-import asyncio
 import json
+import asyncio
 from oauth2client.service_account import ServiceAccountCredentials
 import adapter
 import services
@@ -22,15 +22,20 @@ async def main() -> None:
     bot = LineBot(config=config)
 
     fpl_service = services.FPLService(google_sheet=sheet, config=config)
+
     picks = await fpl_service.list_player_gameweek_picks(gameweek=gameweek)
     messages = []
-    for p in picks[:1]:
+    for p in picks[:4]:
         message = message_template.PlayerGameweekPickMessageV2(
             player_picks=p, gameweek=gameweek
         ).build()
         messages.append(message)
-        print(json.dumps(message, indent=4))
     message = message_template.CarouselMessage(messages=messages)
+    print(
+        json.dumps(
+            messages[0],
+        )
+    )
     bot.send_flex_message(group_id=GROUP_ID, flex_message=message.build())
 
 

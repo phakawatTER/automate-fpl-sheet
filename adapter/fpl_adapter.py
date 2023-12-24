@@ -19,6 +19,7 @@ from models import (
     BootstrapGameweek,
     Bootstrap,
     BootstrapElement,
+    LiveEventResponse,
 )
 import util
 
@@ -177,3 +178,14 @@ class FPLAdapter:
         data: List[dict] = response.json()
         results = [MatchFixture(**d) for d in data]
         return results
+
+    @util.time_track(description="FPLAdapter.get_gameweek_live_score")
+    async def get_gameweek_live_event(self, gameweek: int):
+        url = urljoin(FPLAdapter.BASE_URL, f"/api/event/{gameweek}/live")
+        response = await self.__get_request(url)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(
+                f"unexpected http status code: {response.status_code} with response data: {response.content}"
+            )
+        data: dict = response.json()
+        return LiveEventResponse.create_from_dict(data=data.get("elements"))
