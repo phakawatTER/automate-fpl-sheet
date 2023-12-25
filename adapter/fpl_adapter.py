@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from urllib.parse import urljoin
 from typing import List, Optional
 import httpx
 from models import (
@@ -31,6 +30,10 @@ class FPLError(Exception):
 
     def error(self):
         return self.message
+
+
+def urljoin(base, path):
+    return base + path
 
 
 class FPLAdapter:

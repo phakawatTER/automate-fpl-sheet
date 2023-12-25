@@ -1,7 +1,7 @@
 #!/bin/bash
 
 mkdir deployment_package
-mkdir -p layer/python/lib
+mkdir -p layer/python/lib/python3.9/site-packages
 mkdir -p layer_numpy/python/lib/python3.9/site-packages
 
 cp -rf api deployment_package
@@ -14,7 +14,8 @@ cp -rf models deployment_package
 cp -rf services deployment_package
 cp -rf util deployment_package
 
-cp -rf env_fpl/lib layer/python
+# cp -rf env_fpl/lib layer/python
+pip install -r requirement.txt -t layer/python/lib/python3.9/site-packages
 rm -rf layer/python/lib/python3.9/site-packages/numpy
 rm -rf layer/python/lib/python3.9/site-packages/matplotlib
 rm -rf layer/python/lib/python3.9/site-packages/PIL
