@@ -5,7 +5,6 @@ from database import FirebaseRealtimeDatabase
 
 class _Schema:
     LINE_CHANNELS = "line_channels"
-    LEAGUES = "leagues"
     LEAGUE_PLAYERS = "league_players"
     LEAGUE_SHEETS = "league_sheets"
     LEAGUE_IGNORED_PLAYERS = "league_ignored_players"
@@ -47,10 +46,6 @@ class FirebaseRepo:
 
     def list_leagues_by_line_group_id(self, group_id: str) -> List[int]:
         data = self.__db.get_data(f"{_Schema.LINE_CHANNELS}/{group_id}")
-        return data
-
-    def list_leagues(self) -> List[int]:
-        data = self.__db.get_data(f"{_Schema.LEAGUES}")
         return data
 
     def list_league_players(self, league_id: int):
