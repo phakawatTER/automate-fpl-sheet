@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from urllib.parse import urljoin
 from typing import List, Optional
 import httpx
 from models import (
@@ -33,13 +32,16 @@ class FPLError(Exception):
         return self.message
 
 
+def urljoin(base, path):
+    return base + path
+
+
 class FPLAdapter:
     BASE_URL = "https://fantasy.premierleague.com"
     TIMEOUT = 10
 
-    def __init__(self, league_id: int, cookies: str):
+    def __init__(self, cookies: str):
         self.__cookies = cookies
-        self.__league_id = league_id
 
     async def __get_request(self, url: str):
         async with httpx.AsyncClient() as client:
@@ -87,10 +89,10 @@ class FPLAdapter:
         )
 
     @util.time_track(description="FPLAdapter.get_h2h_league_standing")
-    async def get_h2h_league_standing(self):
+    async def get_h2h_league_standing(self, league_id: int):
         url = urljoin(
             FPLAdapter.BASE_URL,
-            f"/api/leagues-h2h/{self.__league_id}/standings/?page_new_entries=1&page_standings=1",
+            f"/api/leagues-h2h/{league_id}/standings/?page_new_entries=1&page_standings=1",
         )
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -108,10 +110,10 @@ class FPLAdapter:
         )
 
     @util.time_track(description="FPLAdapter.get_h2h_results")
-    async def get_h2h_results(self, gameweek: int):
+    async def get_h2h_results(self, gameweek: int, league_id: int):
         url = urljoin(
             FPLAdapter.BASE_URL,
-            f"/api/leagues-h2h-matches/league/{self.__league_id}/?page=1&event={gameweek}",
+            f"/api/leagues-h2h-matches/league/{league_id}/?page=1&event={gameweek}",
         )
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:

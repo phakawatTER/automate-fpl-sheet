@@ -37,7 +37,10 @@ class Service:
 
     @util.time_track(description="Generate overall gameweek revenue plot")
     async def generate_overall_gameweeks_plot(
-        self, from_gameweek: int, to_gameweek: int
+        self,
+        from_gameweek: int,
+        to_gameweek: int,
+        league_id: int,
     ) -> List[str]:
         players_dict: Dict[str, List[models.PlayerGameweekData]] = {}
         gameweek_futures = []
@@ -45,7 +48,10 @@ class Service:
 
         for i in range(from_gameweek, to_gameweek + 1, 1):
             future = asyncio.ensure_future(
-                self.__fpl_service.get_or_update_fpl_gameweek_table(i)
+                self.__fpl_service.get_or_update_fpl_gameweek_table(
+                    gameweek=i,
+                    league_id=league_id,
+                )
             )
             gameweek_futures.append(future)
             gameweeks.append(f"GW{i}")

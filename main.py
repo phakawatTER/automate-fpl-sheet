@@ -1,42 +1,29 @@
-import json
 import asyncio
-from oauth2client.service_account import ServiceAccountCredentials
-import adapter
-import services
-from config import Config
 from services import message_template
-from line import LineBot
+from app import App
 
 GROUP_ID = "C44a80181a9d0ded2f6c3093adbbd6a8a"
+GAMEWEEK = 17
 
 
 async def main() -> None:
-    credential = ServiceAccountCredentials.from_json_keyfile_name(
-        "./service_account.json"
+    app = App()
+    data = app.firebase_repo.list_leagues_by_line_group_id(GROUP_ID)
+    channel_ids = app.firebase_repo.list_line_channels()
+    print(channel_ids)
+    picks = await app.fpl_service.list_player_gameweek_picks(
+        gameweek=GAMEWEEK,
+        league_id=data[0],
     )
-    config = Config("./config.json")
-    sheet = adapter.GoogleSheet(credential=credential)
-    sheet = sheet.open_sheet_by_url(config.sheet_url)
-
-    gameweek = 18
-    bot = LineBot(config=config)
-
-    fpl_service = services.FPLService(google_sheet=sheet, config=config)
-
-    picks = await fpl_service.list_player_gameweek_picks(gameweek=gameweek)
     messages = []
     for p in picks[:4]:
         message = message_template.PlayerGameweekPickMessageV2(
-            player_picks=p, gameweek=gameweek
+            player_picks=p, gameweek=GAMEWEEK
         ).build()
         messages.append(message)
     message = message_template.CarouselMessage(messages=messages)
-    print(
-        json.dumps(
-            messages[0],
-        )
-    )
-    bot.send_flex_message(group_id=GROUP_ID, flex_message=message.build())
+
+    app.linebot.send_flex_message(group_id=GROUP_ID, flex_message=message.build())
 
 
 if __name__ == "__main__":

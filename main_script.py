@@ -1,16 +1,10 @@
 import argparse
 import asyncio
-from oauth2client.service_account import ServiceAccountCredentials
 from loguru import logger
-from services import FPLService, MessageService
-from config import Config
-from adapter import GoogleSheet
+from app import App
 
 
-class InvalidInputException(Exception):
-    def __init__(self, message: str):
-        super().__init__(message)
-        self.message = message
+GROUP_ID = "C44a80181a9d0ded2f6c3093adbbd6a8a"
 
 
 async def main():
@@ -29,31 +23,32 @@ async def main():
     # Access the value of the gameweek argument
     gameweek: int = args.gameweek
     if gameweek is None:
-        raise InvalidInputException("invalid gameweek value")
+        raise Exception("invalid gameweek value")
     if gameweek < 1 or gameweek > 38:
-        raise InvalidInputException("invalid gameweek value. should be in range 1-38")
+        raise Exception("invalid gameweek value. should be in range 1-38")
 
     logger.info(f"processing gameweek {gameweek}")
-
-    # initialize config
-    config = Config.initialize("./config.json")
-
-    credential = ServiceAccountCredentials.from_json_keyfile_name(
-        "./service_account.json"
+    app = App()
+    league_ids = app.firebase_repo.list_leagues_by_line_group_id(group_id=GROUP_ID)
+    players = await app.fpl_service.get_or_update_fpl_gameweek_table(
+        gameweek,
+        league_id=league_ids[0],
     )
-    google_sheet = GoogleSheet(credential=credential)
-    google_sheet = google_sheet.open_sheet_by_url(config.sheet_url)
-    fpl_service = FPLService(config=config, google_sheet=google_sheet)
-    _ = await fpl_service.get_or_update_fpl_gameweek_table(gameweek)
-    # group_id = "C44a80181a9d0ded2f6c3093adbbd6a8a"
-    # message_service = MessageService(config)
-    # event_status = await fpl_service.get_gameweek_event_status(gameweek)
-    # message_service.send_gameweek_result_message(
-    #     gameweek, players, group_id=group_id, event_status=event_status
-    # )
-    # players_revenues = await fpl_service.list_players_revenues()
-    # message_service.send_playeres_revenue_summary(players_revenues, group_id)
-    # message_service.send_gameweek_reminder_message(gameweek, group_id)
+    league_id = league_ids[0]
+    league_sheet = app.firebase_repo.get_league_google_sheet(league_id)
+    app.message_service.send_gameweek_result_message(
+        gameweek=gameweek,
+        players=players,
+        group_id=GROUP_ID,
+        event_status=None,
+        sheet_url=league_sheet.url,
+    )
+    player_revs = await app.fpl_service.list_players_revenues(league_id=league_id)
+    app.message_service.send_playeres_revenue_summary(
+        players_revenues=player_revs,
+        group_id=GROUP_ID,
+        sheet_url=league_sheet.url,
+    )
 
 
 if __name__ == "__main__":

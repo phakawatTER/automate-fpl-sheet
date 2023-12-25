@@ -1,7 +1,6 @@
 from typing import List, Optional
 from line import LineBot
 import models
-from config import Config
 from .message_template import (
     GameweekResultMessage,
     RevenueMessage,
@@ -15,9 +14,11 @@ STEP_SIZE = 4
 
 
 class MessageService:
-    def __init__(self, config: Config):
-        self.bot = LineBot(config=config)
-        self.sheet_url = config.sheet_url
+    def __init__(
+        self,
+        bot: LineBot,
+    ):
+        self.bot = bot
 
     def send_text_message(self, text: str, group_id: str):
         self.bot.send_text_message(group_id, text=text)
@@ -37,12 +38,13 @@ class MessageService:
         gameweek: int,
         players: List[models.PlayerGameweekData],
         group_id: str,
+        sheet_url: str,
         event_status: Optional[models.FPLEventStatusResponse] = None,
     ):
         message = GameweekResultMessage(
             gameweek=gameweek,
             players=players,
-            sheet_url=self.sheet_url,
+            sheet_url=sheet_url,
             event_status=event_status,
         )
 
@@ -53,19 +55,27 @@ class MessageService:
         )
 
     def send_playeres_revenue_summary(
-        self, players_revenues: List[models.PlayerRevenue], group_id: str
+        self,
+        players_revenues: List[models.PlayerRevenue],
+        group_id: str,
+        sheet_url: str,
     ):
         message = RevenueMessage(
             players_revenues=players_revenues,
-            sheet_url=self.sheet_url,
+            sheet_url=sheet_url,
         )
 
         self.bot.send_flex_message(
             group_id, flex_message=message.build(), alt_text="FPL Players Revenues"
         )
 
-    def send_gameweek_reminder_message(self, gameweek: int, group_id: str):
-        message = GameweekReminderMessage(sheet_url=self.sheet_url, gameweek=gameweek)
+    def send_gameweek_reminder_message(
+        self,
+        gameweek: int,
+        group_id: str,
+        sheet_url: str,
+    ):
+        message = GameweekReminderMessage(sheet_url=sheet_url, gameweek=gameweek)
         self.bot.send_flex_message(
             group_id=group_id,
             flex_message=message.build(),
@@ -78,6 +88,7 @@ class MessageService:
         event_statuses: List[Optional[models.FPLEventStatusResponse]],
         gameweeks: List[int],
         group_id: str,
+        sheet_url: str,
     ):
         step_size = 8
         for i in range(0, len(gameweek_players), step_size):
@@ -95,7 +106,7 @@ class MessageService:
                     players=players,
                     event_status=event_status,
                     gameweek=gameweek,
-                    sheet_url=self.sheet_url,
+                    sheet_url=sheet_url,
                 )
                 messages.append(m.build())
 
@@ -126,10 +137,13 @@ class MessageService:
             )
 
     def send_bot_instruction_message(
-        self, group_id: str, commands_map_list: List[tuple[str]]
+        self,
+        group_id: str,
+        commands_map_list: List[tuple[str]],
+        sheet_url: str,
     ):
         message = BotInstructionMessage(
-            sheet_url=self.sheet_url, commands_map_list=commands_map_list
+            sheet_url=sheet_url, commands_map_list=commands_map_list
         ).build()
         self.bot.send_flex_message(
             group_id=group_id, flex_message=message, alt_text="Luka Bot instructions"

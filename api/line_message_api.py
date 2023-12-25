@@ -3,6 +3,7 @@ import asyncio
 import json
 from typing import List, Optional
 from flask import Flask, request, abort
+from werkzeug.exceptions import HTTPException
 from boto3.session import Session
 from boto3_type_annotations.lambda_ import Client as LambdaClient
 from linebot import WebhookHandler
@@ -11,9 +12,7 @@ from linebot.exceptions import InvalidSignatureError
 from loguru import logger
 import models
 import util
-from services import FPLService, MessageService
-from config.config import Config
-
+from app import App
 
 PLOT_GENERATOR_FUNCTION_NAME = "FPLPlotGenerator"
 
@@ -28,6 +27,8 @@ class MessageHandlerActionGroup:
     GET_PLAYERS_REVENUES = "GET_PLAYERS_REVENUES"
     GENERATE_GAMEWEEKS_PLOT = "GENERATE_GAMEWEEKS_PLOT"
     GET_PLAYER_GW_PICKS = "GET_PLAYER_GW_PICKS"
+    SUBSCRIBE_LEAGUE = "SUBSCRIBE_LEAGUE"
+    UNSUBSCRIBE_LEAGUE = "UNSUBSCRIBE_LEAGUE"
 
     @staticmethod
     def get_commands():
@@ -37,12 +38,16 @@ class MessageHandlerActionGroup:
             MessageHandlerActionGroup.GET_PLAYERS_REVENUES: "Get cummulative revenues",
             MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT: "Generate cummulative revenue over gameweeks",
             MessageHandlerActionGroup.GET_PLAYER_GW_PICKS: "List players's first 11 picks of given gameweek",
+            MessageHandlerActionGroup.SUBSCRIBE_LEAGUE: "Subscribe league by league id",
+            MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE: "Unsubscribe league by league id",
         }
 
 
 class LineMessageAPI:
     PATTERN_ACTIONS = {
         r"list (cmd|commands)": HelperHandlerActionGroup.LIST_COMMANDS,
+        r"subscribe league (\d+)": MessageHandlerActionGroup.SUBSCRIBE_LEAGUE,
+        r"unsubscribe league": MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE,
         r"get (gw|gameweek) (\d+-\d+)": MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE,
         r"get (gw|gameweek) (\d+)": MessageHandlerActionGroup.UPDATE_FPL_TABLE,
         r"get (revenue|rev)": MessageHandlerActionGroup.GET_PLAYERS_REVENUES,
@@ -50,26 +55,22 @@ class LineMessageAPI:
         r"get (picks) (\d+)": MessageHandlerActionGroup.GET_PLAYER_GW_PICKS,
     }
 
-    def __init__(
-        self,
-        message_service: MessageService,
-        fpl_service: FPLService,
-        config: Config,
-    ):
+    def __init__(self, app: App):
         self.__app = Flask(__name__)
-        self.__handler = WebhookHandler(config.line_channel_secret)
-        self.__message_service = message_service
-        self.__fpl_service = fpl_service
+        self.__handler = WebhookHandler(app.config.line_channel_secret)
+        self.__message_service = app.message_service
+        self.__fpl_service = app.fpl_service
+        self.__firebase_repo = app.firebase_repo
         self.__session = Session()
         self.__lambda_client: LambdaClient = self.__session.client("lambda")
 
     def initialize(self):
         @self.__app.route("/health-check", methods=["GET"])
-        def health_check():
+        def __health_check__():
             return {"message": "OK"}
 
         @self.__app.route("/callback", methods=["POST"])
-        def callback():
+        def __callback__():
             signature = request.headers["X-Line-Signature"]
             body = request.get_data(as_text=True)
             try:
@@ -81,11 +82,11 @@ class LineMessageAPI:
             return {"message": "OK"}
 
         @self.__handler.add(MessageEvent, message=TextMessage)
-        def handle_message(event: MessageEvent):
+        def __handle_message__(event: MessageEvent):
             source: SourceGroup = event.source
             message: TextMessage = event.message
-
             text: str = message.text
+
             for pattern, action in LineMessageAPI.PATTERN_ACTIONS.items():
                 match = re.search(pattern, text.lower())
                 if match:
@@ -141,6 +142,15 @@ class LineMessageAPI:
                                 self.__handle_players_gameweek_picks
                             )(gameweek=gameweek, group_id=source.group_id)
                         )
+                    elif action == MessageHandlerActionGroup.SUBSCRIBE_LEAGUE:
+                        extracted_group = match.group(1)
+                        league_id = int(extracted_group)
+                        self.__subscribe_league(
+                            group_id=source.group_id,
+                            league_id=league_id,
+                        )
+                    elif action == MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE:
+                        self.__unsubscribe_league(source.group_id)
                     elif action == HelperHandlerActionGroup.LIST_COMMANDS:
                         self.__run_in_error_wrapper(self.__handle_list_bot_commands)(
                             group_id=source.group_id
@@ -150,6 +160,31 @@ class LineMessageAPI:
 
         return self.__app
 
+    def __unsubscribe_league(self, group_id: str):
+        league_id = self.__get_group_league_id(group_id)
+        if league_id is None:
+            self.__message_service.send_text_message("⚠️ Subscribed league not found")
+            return
+        self.__firebase_repo.unsubscribe_league(group_id)
+        self.__message_service.send_text_message(
+            text=f"🥲 You have unsubscribed league ID {league_id}",
+            group_id=group_id,
+        )
+
+    def __subscribe_league(self, group_id: str, league_id: int):
+        is_ok = self.__firebase_repo.subscribe_league(
+            league_id=league_id,
+            line_group_id=group_id,
+        )
+        text = f"🎉 You have subscribed to league ID {league_id}"
+        if not is_ok:
+            text = f"❌ Unable to subscribe to league ID {league_id}"
+
+        self.__message_service.send_text_message(
+            text=text,
+            group_id=group_id,
+        )
+
     def __run_in_error_wrapper(self, callback):
         def construct_error_message(e: Exception) -> str:
             return f"❌ Oops...something went wrong with error: {e}"
@@ -157,6 +192,8 @@ class LineMessageAPI:
         def wrapped_sync(*args, **kwargs):
             try:
                 return callback(*args, **kwargs)
+            except HTTPException:
+                return
             except Exception as e:
                 self.__message_service.send_text_message(
                     text=construct_error_message(e),
@@ -178,16 +215,31 @@ class LineMessageAPI:
             return wrapped_async
         return wrapped_sync
 
+    # NOTE: We support only 1 league per channel for now
+    def __get_group_league_id(self, group_id: str):
+        league_ids = self.__firebase_repo.list_leagues_by_line_group_id(group_id)
+        if league_ids is not None and len(league_ids) > 0:
+            return league_ids[0]
+        self.__message_service.send_text_message(
+            text="⚠️ No subscribed league found. Please subscribe to some league",
+            group_id=group_id,
+        )
+        abort(404)
+
     def __handle_list_bot_commands(self, group_id: str):
         commands = MessageHandlerActionGroup.get_commands()
         commands_map_list: List[tuple[str]] = []
+        league_id = self.__get_group_league_id(group_id)
+        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         for cmd, desc in commands.items():
             for pattern, _cmd in LineMessageAPI.PATTERN_ACTIONS.items():
                 if cmd == _cmd:
                     commands_map_list.append((desc, pattern.replace("|", " | ")))
                     break
         self.__message_service.send_bot_instruction_message(
-            group_id=group_id, commands_map_list=commands_map_list
+            group_id=group_id,
+            commands_map_list=commands_map_list,
+            sheet_url=league_sheet.url,
         )
 
     async def __handle_batch_update_fpl_table(
@@ -203,13 +255,16 @@ class LineMessageAPI:
         gameweek_players: List[List[models.PlayerGameweekData]] = []
         event_statuses: List[Optional[models.FPLEventStatusResponse]] = []
         gameweeks: List[int] = []
+        league_id = self.__get_group_league_id(group_id)
+        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_text_message(
             text=f"Procesing gameweek {from_gameweek} to {to_gameweek}",
             group_id=group_id,
         )
         for gameweek in range(from_gameweek, to_gameweek + 1):
             players = await self.__fpl_service.get_or_update_fpl_gameweek_table(
-                gameweek
+                gameweek=gameweek,
+                league_id=league_id,
             )
             gameweek_players.append(players)
             event_statuses.append(
@@ -219,38 +274,46 @@ class LineMessageAPI:
                 else None
             )
             gameweeks.append(gameweek)
-
         self.__message_service.send_carousel_gameweek_results_message(
             gameweek_players=gameweek_players,
             event_statuses=event_statuses,
             gameweeks=gameweeks,
             group_id=group_id,
+            sheet_url=league_sheet.url,
         )
 
     async def __handle_update_fpl_table(self, gameweek: int, group_id: str):
+        league_id = self.__get_group_league_id(group_id)
         self.__message_service.send_text_message(
             f"Gameweek {gameweek} result is being processed. Please wait for a moment",
             group_id=group_id,
         )
         players = await self.__fpl_service.get_or_update_fpl_gameweek_table(
-            gameweek=gameweek
+            gameweek=gameweek,
+            league_id=league_id,
         )
         event_status = await self.__fpl_service.get_gameweek_event_status(gameweek)
+        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_gameweek_result_message(
             gameweek=gameweek,
             players=players,
             group_id=group_id,
             event_status=event_status,
+            sheet_url=league_sheet.url,
         )
 
     async def __handle_get_revenues(self, group_id: str):
+        league_id = self.__get_group_league_id(group_id)
         self.__message_service.send_text_message(
             "Players revenue is being processed. Please wait for a moment",
             group_id=group_id,
         )
-        players = await self.__fpl_service.list_players_revenues()
+        players = await self.__fpl_service.list_players_revenues(league_id)
+        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_playeres_revenue_summary(
-            players_revenues=players, group_id=group_id
+            players_revenues=players,
+            group_id=group_id,
+            sheet_url=league_sheet.url,
         )
 
     @util.time_track(description="Gameweek plot handler")
@@ -261,7 +324,12 @@ class LineMessageAPI:
             text=f"Plots for GW{from_gameweek} to GW{to_gameweek} are being processed. Please wait for a moment...",
             group_id=group_id,
         )
-        payload = {"start_gw": from_gameweek, "end_gw": to_gameweek}
+        league_id = self.__get_group_league_id(group_id)
+        payload = {
+            "start_gw": from_gameweek,
+            "end_gw": to_gameweek,
+            "league_id": league_id,
+        }
         response = self.__lambda_client.invoke(
             FunctionName=PLOT_GENERATOR_FUNCTION_NAME,
             InvocationType="RequestResponse",
@@ -277,8 +345,10 @@ class LineMessageAPI:
             self.__message_service.send_image_messsage(image_url=url, group_id=group_id)
 
     async def __handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+        league_id = self.__get_group_league_id(group_id)
         player_gameweek_picks = await self.__fpl_service.list_player_gameweek_picks(
-            gameweek=gameweek
+            gameweek=gameweek,
+            league_id=league_id,
         )
         self.__message_service.send_carousel_players_gameweek_picks(
             gameweek=gameweek,
