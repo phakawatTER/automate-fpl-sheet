@@ -49,8 +49,5 @@ class App:
             fpl_adapter=fpl_adapter,
             firebase_repo=self.firebase_repo,
         )
-        self.plot_service = services.PlotService(
-            fpl_service=self.fpl_service,
-            s3_uploader=self.s3_uploader,
-        )
+
         self.sfn = StateMachine(session=sess)

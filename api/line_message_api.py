@@ -3,6 +3,7 @@ import asyncio
 import json
 from typing import List, Optional
 from flask import Flask, request, abort
+from werkzeug.exceptions import HTTPException
 from boto3.session import Session
 from boto3_type_annotations.lambda_ import Client as LambdaClient
 from linebot import WebhookHandler
@@ -191,6 +192,8 @@ class LineMessageAPI:
         def wrapped_sync(*args, **kwargs):
             try:
                 return callback(*args, **kwargs)
+            except HTTPException:
+                return
             except Exception as e:
                 self.__message_service.send_text_message(
                     text=construct_error_message(e),

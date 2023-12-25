@@ -3,7 +3,7 @@ from services import message_template
 from app import App
 
 GROUP_ID = "C44a80181a9d0ded2f6c3093adbbd6a8a"
-GAMEWEEK = 18
+GAMEWEEK = 17
 
 
 async def main() -> None:

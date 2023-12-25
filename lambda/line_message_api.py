@@ -10,8 +10,12 @@ sys.path.append(project_directory)
 from api import LineMessageAPI
 from app import App
 
+_APP = None
+
 
 def handler(event, context):
-    app = App()
-    app = LineMessageAPI(app=app).initialize()
+    global _APP
+    if _APP is None:
+        _APP = App()
+    app = LineMessageAPI(app=_APP).initialize()
     return awsgi.response(app, event, context)
