@@ -19,8 +19,8 @@ from models import (
     PlayerGameweekPicksData,
     LiveEventElement,
 )
-from .firebase_repo import FirebaseRepo
 import util
+from .firebase_repo import FirebaseRepo
 
 
 CACHE_TABLE_NAME = "FPLCacheTable"
@@ -88,6 +88,8 @@ class Service:
         )
         players_points_map: Dict[int, PlayerGameweekData] = {}
         results = h2h_result.results
+        ignored_players = self.firebase_repo.list_league_ignored_players(league_id)
+        ignored_players.append(None)
 
         for result in results:
             # player 1
@@ -99,9 +101,9 @@ class Service:
             p2_point = util.add_noise(result.entry_2_points)
             p2_id = result.entry_2_entry
 
-            if p1_name not in self.config.ignore_players:
+            if p1_id not in ignored_players:
                 players_points_map[p1_id] = PlayerGameweekData(p1_name, p1_id, p1_point)
-            if p2_name not in self.config.ignore_players:
+            if p2_id not in ignored_players:
                 players_points_map[p2_id] = PlayerGameweekData(p2_name, p2_id, p2_point)
 
         futures = []
@@ -450,11 +452,18 @@ class Service:
                         new_element.is_vice_captain = pick.is_vice_captain
                         new_element.total_points = gameweek_live_event[
                             element.id
-                        ].stats.total_points
+                        ].stats.total_points * (
+                            pick.multiplier if pick.multiplier > 0 else 1
+                        )
 
                         picks.append(new_element)
             players_gameweek_picks.append(
-                PlayerGameweekPicksData(player=player_data, picked_elements=picks)
+                PlayerGameweekPicksData(
+                    player=player_data,
+                    picked_elements=picks,
+                    event_transfers=r.entry_history.event_transfers,
+                    event_transfers_cost=r.entry_history.event_transfers_cost,
+                )
             )
 
         return players_gameweek_picks

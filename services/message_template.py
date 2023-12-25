@@ -506,9 +506,12 @@ class PlayerGameweekPickMessageV2:
 
     def __construct_header(self):
         total_points = 0
+        transfer_cost = self.player_picks.event_transfers_cost
+        transfer_count = self.player_picks.event_transfers
         for p in self.player_picks.picked_elements:
             if not p.is_subsituition:
                 total_points += p.total_points
+        total_points = total_points - transfer_cost
         return {
             "type": "box",
             "layout": "horizontal",
@@ -518,7 +521,7 @@ class PlayerGameweekPickMessageV2:
                     "type": "box",
                     "layout": "vertical",
                     "flex": 1,
-                    "justifyContent": "center",
+                    "justifyContent": "flex-start",
                     "contents": [
                         {
                             "type": "image",
@@ -530,7 +533,7 @@ class PlayerGameweekPickMessageV2:
                 {
                     "type": "box",
                     "layout": "vertical",
-                    "flex": 3,
+                    "flex": 4,
                     "contents": [
                         {
                             "type": "text",
@@ -550,15 +553,36 @@ class PlayerGameweekPickMessageV2:
                 {
                     "type": "box",
                     "layout": "vertical",
-                    "flex": 1,
+                    "flex": 2,
                     "justifyContent": "center",
                     "contents": [
+                        {
+                            "type": "text",
+                            "align": "end",
+                            "text": "Final Points",
+                            "size": "xxs",
+                            "color": Color.TOPIC,
+                        },
                         {
                             "type": "text",
                             "align": "end",
                             "text": f"{total_points}",
                             "size": "xxl",
                             "weight": "bold",
+                            "color": Color.TOPIC if total_points >= 0 else Color.DANGER,
+                        },
+                        {
+                            "type": "text",
+                            "align": "end",
+                            "text": "Transfers",
+                            "size": "xxs",
+                            "color": Color.TOPIC,
+                        },
+                        {
+                            "type": "text",
+                            "align": "end",
+                            "text": f"{transfer_count} ({-transfer_cost})",
+                            "size": "md",
                             "color": Color.TOPIC if total_points >= 0 else Color.DANGER,
                         },
                     ],

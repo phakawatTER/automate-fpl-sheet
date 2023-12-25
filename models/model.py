@@ -35,4 +35,6 @@ class PlayerSheetData:
 @dataclass
 class PlayerGameweekPicksData:
     player: PlayerSheetData
+    event_transfers_cost: int
+    event_transfers: int
     picked_elements: List[BootstrapElement]
