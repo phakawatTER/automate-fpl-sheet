@@ -11,13 +11,13 @@ from models import (
     PlayerGameweekData,
     PlayerRevenue,
     FPLEventStatus,
-    MatchFixture,
+    FPLMatchFixture,
     FPLEventStatusResponse,
-    PlayerHistory,
-    FantasyTeam,
+    FPLPlayerHistory,
+    FPLFantasyTeam,
     BootstrapElement,
     PlayerGameweekPicksData,
-    LiveEventElement,
+    FPLLiveEventElement,
 )
 import util
 from .firebase_repo import FirebaseRepo
@@ -56,7 +56,7 @@ class Service:
             player.player_id, gameweek=gameweek
         )
         for pick in player_team.picks:
-            player_gameweek_history: Optional[PlayerHistory] = None
+            player_gameweek_history: Optional[FPLPlayerHistory] = None
             if pick.is_captain or pick.is_vice_captain:
                 player_gameweek_history = (
                     await self.fpl_adapter.get_player_gameweek_info(
@@ -121,88 +121,90 @@ class Service:
         return players
 
     @util.time_track(description="Update FPL Table")
-    async def get_or_update_fpl_gameweek_table(self, gameweek: int, league_id: int):
-        if not self.__is_current_gameweek(gameweek=gameweek):
-            cache = self.__lookup_gameweek_result_cache(gameweek)
+    async def get_or_update_fpl_gameweek_table(
+        self, gameweek: int, league_id: int, ignore_cache=False
+    ):
+        if not self.__is_current_gameweek(gameweek=gameweek) and not ignore_cache:
+            cache = self.__lookup_gameweek_result_cache(gameweek, league_id)
             if cache is not None:
                 return cache
 
         players = await self.__construct_players_gameweek_data(gameweek, league_id)
-        current_point_col = START_POINT_COL + ((gameweek - 1) * 3)
-        current_reward_col = current_point_col + 2
-
-        league_sheet = self.firebase_repo.get_league_google_sheet(league_id)
-        worksheet = self.google_sheet.open_sheet_by_url(
-            league_sheet.url
-        ).open_worksheet_from_default_sheet(
-            league_sheet.worksheet,
+        league_gameweek_rewards = self.firebase_repo.list_league_gameweek_rewards(
+            league_id
         )
+        if league_gameweek_rewards is None:
+            return players
+        if len(players) != len(league_gameweek_rewards):
+            raise Exception("total number of rewards not equal to number of players")
 
-        # update point in sheet
-        self.__update_players_points_map_in_sheet(
-            current_point_col=current_point_col,
-            start_point_row=START_POINT_ROW,
-            players=players,
-            worksheet=worksheet,
+        new_reward_map: dict[int, float] = {}
+
+        players = sorted(players, key=lambda player: player.points, reverse=True)
+        for i, p in enumerate(players):
+            p.reward = league_gameweek_rewards[i]
+
+        players_with_shared_reward = [
+            player for player in players if player.reward_division > 1
+        ]
+
+        for p in players_with_shared_reward:
+            sum_reward = 0
+            for inner_p in players_with_shared_reward:
+                sum_reward += inner_p.reward
+            new_reward = sum_reward / p.reward_division
+            new_reward_map[p.player_id] = new_reward
+
+        for p in players_with_shared_reward:
+            p.reward = new_reward_map[p.player_id]
+
+        is_ok = self.firebase_repo.put_league_gameweek_results(
             league_id=league_id,
+            player_gameweek_results=players,
+            gameweek=gameweek,
         )
-        # update players's reward from sheet
-        self.__update_players_reward_from_sheet(
-            current_reward_col=current_reward_col,
-            players=players,
-            start_point_row=START_POINT_ROW,
-            league_id=league_id,
-            worksheet=worksheet,
-        )
-        should_add_shared_result = await self.__should_add_shared_result()
-        # we should update shared reward only when gameweek is end
-        if should_add_shared_result:
-            # update player's shared reward (duplicated)
-            self.__update_players_shared_reward(
-                current_reward_col=current_reward_col,
-                players=players,
-                worksheet=worksheet,
-            )
+        if not is_ok:
+            raise Exception("unable to update gameweek result")
 
-        player_cache_items = [player.__dict__ for player in players]
-        self.__put_cache_item(key=f"gameweek-{gameweek}", item=player_cache_items)
+        player_cache_items = [player.to_json() for player in players]
+        self.__put_cache_item(
+            key=f"{league_id}-gameweek-{gameweek}", item=player_cache_items
+        )
 
         return players
 
-    def __get_player_ids_range_from_sheet(self, league_id: int):
-        players = self.firebase_repo.list_league_players(league_id)
+    def __get_player_ids_range_from_sheet(self, num_players: int):
         start = util.convert_to_a1_notation(4, 1)
-        stop = util.convert_to_a1_notation(4 + len(players) - 1, 1)
+        stop = util.convert_to_a1_notation(4 + num_players - 1, 1)
         return f"{start}:{stop}"
 
     async def list_players_revenues(self, league_id: int):
-        standing_result = await self.fpl_adapter.get_h2h_league_standing(
-            league_id=league_id
+        current_gameweek_status = await self.get_current_gameweek()
+        current_gameweek = current_gameweek_status.event
+        players = await self.__construct_players_gameweek_data(
+            gameweek=current_gameweek, league_id=league_id
         )
-        standings = standing_result.standings
-        league_sheet = self.firebase_repo.get_league_google_sheet(league_id)
-        worksheet = self.google_sheet.open_sheet_by_url(
-            league_sheet.url
-        ).open_worksheet_from_default_sheet(
-            league_sheet.worksheet,
-        )
+        player_revs_map: Dict[int, PlayerRevenue] = {}
 
-        player_ids_range = self.__get_player_ids_range_from_sheet(league_id)
+        for p in players:
+            player_revs_map[p.player_id] = PlayerRevenue(name=p.name, revenue=0)
 
-        player_ids = [x.value for x in worksheet.range(player_ids_range)]
-        revenue_col = START_POINT_COL + (37 * 3) + 4
-        players: List[PlayerRevenue] = []
-        for i, player_id in enumerate(player_ids):
-            for standing in standings:
-                if standing.entry == int(player_id):
-                    sheet_row = START_POINT_ROW + i
-                    cell_value = worksheet.cell(sheet_row, revenue_col).numeric_value
-                    player = PlayerRevenue(name=standing.entry_name, revenue=cell_value)
-                    players.append(player)
+        for gw in range(1, current_gameweek + 1, 1):
+            gameweek_results = self.firebase_repo.get_league_gameweek_results(
+                league_id=league_id,
+                gameweek=gw,
+            )
+            if gameweek_results is None:
+                raise Exception(
+                    "error when getting revenue with error gameweek results not found"
+                )
+            for player_result in gameweek_results:
+                player_revs_map[player_result.player_id].revenue += player_result.reward
 
-        players = sorted(players, key=lambda player: player.revenue, reverse=True)
+        player_revs = [p_rev for _, p_rev in player_revs_map.items()]
+        player_revs = sorted(player_revs, key=lambda p_rev: p_rev.revenue, reverse=True)
 
-        return players
+        return player_revs
 
     def get_current_gameweek_from_dynamodb(self) -> int:
         item = self.dynamodb.get_item_by_hash_key("gameweek")
@@ -218,9 +220,9 @@ class Service:
 
         return gameweek_status
 
-    def get_gameweek_last_match(self, gameweek: int) -> MatchFixture:
+    def get_gameweek_last_match(self, gameweek: int) -> FPLMatchFixture:
         fixtures = self.list_gameweek_fixtures(gameweek)
-        last_match: Optional[MatchFixture] = None
+        last_match: Optional[FPLMatchFixture] = None
         for fixture in fixtures:
             if last_match is None:
                 last_match = fixture
@@ -343,6 +345,7 @@ class Service:
     ):
         player_ids_range = self.__get_player_ids_range_from_sheet(league_id)
         player_ids = [t.value for t in worksheet.range(player_ids_range)]
+
         cell_notations: List[str] = []
         cell_values: List[List[float]] = []
         for i, player_id in enumerate(player_ids):
@@ -375,9 +378,13 @@ class Service:
         return response
 
     def __lookup_gameweek_result_cache(
-        self, gameweek: int
+        self,
+        gameweek: int,
+        league_id: int,
     ) -> Optional[List[PlayerGameweekData]]:
-        response = self.dynamodb.get_item_by_hash_key(key=f"gameweek-{gameweek}")
+        response = self.dynamodb.get_item_by_hash_key(
+            key=f"{league_id}-gameweek-{gameweek}"
+        )
         item = response.get("Item")
         if item is None:
             return None
@@ -402,9 +409,9 @@ class Service:
 
     async def get_gameweek_live_event(
         self, gameweek: int
-    ) -> dict[int, LiveEventElement]:
+    ) -> dict[int, FPLLiveEventElement]:
         response = await self.fpl_adapter.get_gameweek_live_event(gameweek=gameweek)
-        element_map: Dict[int, LiveEventElement] = {}
+        element_map: Dict[int, FPLLiveEventElement] = {}
         for element in response.elements:
             element_map[element.id] = element
         return element_map
@@ -422,14 +429,14 @@ class Service:
             futures.append(future)
             player_picks_dict[player_data.team_name] = []
 
-        results: List[FantasyTeam] = await asyncio.gather(*futures)
+        results: List[FPLFantasyTeam] = await asyncio.gather(*futures)
 
         return results, players_data
 
     @util.time_track(description="List player gameweek picks")
     async def list_player_gameweek_picks(self, gameweek: int, league_id: int):
         gameweek_live_event: Dict[
-            int, LiveEventElement
+            int, FPLLiveEventElement
         ] = await self.get_gameweek_live_event(gameweek=gameweek)
         fantasy_teams, players_data = await self.__list_fantasy_teams(
             gameweek=gameweek, league_id=league_id

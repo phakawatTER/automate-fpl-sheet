@@ -7,7 +7,7 @@ root_directory = os.path.dirname(os.path.abspath(__file__))
 project_directory = os.path.dirname(root_directory)
 sys.path.append(project_directory)
 
-from models import MatchFixture
+from models import FPLMatchFixture
 from app import App
 
 LINE_UP_STATEMACHINE_ARN = "arn:aws:states:ap-southeast-1:661296166047:stateMachine:FPLLineUpNotificationStateMachine"
@@ -20,7 +20,7 @@ async def execute():
     current_gameweek_fixtures = await app.fpl_service.list_gameweek_fixtures(
         gameweek=current_gameweek
     )
-    earliest_match: MatchFixture = None
+    earliest_match: FPLMatchFixture = None
     for fixture in current_gameweek_fixtures:
         if earliest_match is None:
             earliest_match = fixture
@@ -36,12 +36,9 @@ async def execute():
     if current_gameweek != latest_gameweek and should_remind:
         line_group_ids = app.firebase_repo.list_line_channels()
         for group_id in line_group_ids:
-            league_id = app.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
-            league_sheet = app.firebase_repo.get_league_google_sheet(league_id)
             app.message_service.send_gameweek_reminder_message(
                 gameweek=current_gameweek,
                 group_id=group_id,
-                sheet_url=league_sheet.url,
             )
         app.fpl_service.update_gameweek(gameweek=current_gameweek)
         # notify line-up flex message when the first match of gameweek is played

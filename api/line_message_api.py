@@ -61,6 +61,7 @@ class LineMessageAPI:
         self.__message_service = app.message_service
         self.__fpl_service = app.fpl_service
         self.__firebase_repo = app.firebase_repo
+        self.__subscription_service = app.subscription_service
         self.__session = Session()
         self.__lambda_client: LambdaClient = self.__session.client("lambda")
 
@@ -145,9 +146,11 @@ class LineMessageAPI:
                     elif action == MessageHandlerActionGroup.SUBSCRIBE_LEAGUE:
                         extracted_group = match.group(1)
                         league_id = int(extracted_group)
-                        self.__subscribe_league(
-                            group_id=source.group_id,
-                            league_id=league_id,
+                        loop.run_until_complete(
+                            self.__subscribe_league(
+                                group_id=source.group_id,
+                                league_id=league_id,
+                            )
                         )
                     elif action == MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE:
                         self.__unsubscribe_league(source.group_id)
@@ -171,12 +174,18 @@ class LineMessageAPI:
             group_id=group_id,
         )
 
-    def __subscribe_league(self, group_id: str, league_id: int):
-        is_ok = self.__firebase_repo.subscribe_league(
+    async def __subscribe_league(self, group_id: str, league_id: int):
+        is_ok = await self.__subscription_service.subscribe_league(
             league_id=league_id,
-            line_group_id=group_id,
+            group_id=group_id,
         )
         text = f"🎉 You have subscribed to league ID {league_id}"
+        if is_ok:
+            is_ok = self.__subscription_service.update_league_sheet(
+                league_id=league_id,
+                url="https://docs.google.com/spreadsheets/d/1eciOdiGItEkml98jVLyXysGMtpMa06hbiTTJ40lztw4/edit#gid=1315457538",
+                worksheet_name="Sheet3",
+            )
         if not is_ok:
             text = f"❌ Unable to subscribe to league ID {league_id}"
 
@@ -229,8 +238,6 @@ class LineMessageAPI:
     def __handle_list_bot_commands(self, group_id: str):
         commands = MessageHandlerActionGroup.get_commands()
         commands_map_list: List[tuple[str]] = []
-        league_id = self.__get_group_league_id(group_id)
-        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         for cmd, desc in commands.items():
             for pattern, _cmd in LineMessageAPI.PATTERN_ACTIONS.items():
                 if cmd == _cmd:
@@ -239,7 +246,6 @@ class LineMessageAPI:
         self.__message_service.send_bot_instruction_message(
             group_id=group_id,
             commands_map_list=commands_map_list,
-            sheet_url=league_sheet.url,
         )
 
     async def __handle_batch_update_fpl_table(
@@ -256,7 +262,6 @@ class LineMessageAPI:
         event_statuses: List[Optional[models.FPLEventStatusResponse]] = []
         gameweeks: List[int] = []
         league_id = self.__get_group_league_id(group_id)
-        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_text_message(
             text=f"Procesing gameweek {from_gameweek} to {to_gameweek}",
             group_id=group_id,
@@ -279,7 +284,6 @@ class LineMessageAPI:
             event_statuses=event_statuses,
             gameweeks=gameweeks,
             group_id=group_id,
-            sheet_url=league_sheet.url,
         )
 
     async def __handle_update_fpl_table(self, gameweek: int, group_id: str):
@@ -293,13 +297,11 @@ class LineMessageAPI:
             league_id=league_id,
         )
         event_status = await self.__fpl_service.get_gameweek_event_status(gameweek)
-        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_gameweek_result_message(
             gameweek=gameweek,
             players=players,
             group_id=group_id,
             event_status=event_status,
-            sheet_url=league_sheet.url,
         )
 
     async def __handle_get_revenues(self, group_id: str):
@@ -309,11 +311,9 @@ class LineMessageAPI:
             group_id=group_id,
         )
         players = await self.__fpl_service.list_players_revenues(league_id)
-        league_sheet = self.__firebase_repo.get_league_google_sheet(league_id)
         self.__message_service.send_playeres_revenue_summary(
             players_revenues=players,
             group_id=group_id,
-            sheet_url=league_sheet.url,
         )
 
     @util.time_track(description="Gameweek plot handler")
@@ -325,10 +325,18 @@ class LineMessageAPI:
             group_id=group_id,
         )
         league_id = self.__get_group_league_id(group_id)
+        gameweeks_data: list[list[dict[str, any]]] = []
+        for gw in range(from_gameweek, to_gameweek + 1, 1):
+            gameweek_data = await self.__fpl_service.get_or_update_fpl_gameweek_table(
+                gameweek=gw,
+                league_id=league_id,
+            )
+            gameweeks_data.append([g.to_json() for g in gameweek_data])
+
         payload = {
             "start_gw": from_gameweek,
             "end_gw": to_gameweek,
-            "league_id": league_id,
+            "gameweeks_data": gameweeks_data,
         }
         response = self.__lambda_client.invoke(
             FunctionName=PLOT_GENERATOR_FUNCTION_NAME,

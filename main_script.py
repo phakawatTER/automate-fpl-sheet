@@ -30,25 +30,18 @@ async def main():
     logger.info(f"processing gameweek {gameweek}")
     app = App()
     league_ids = app.firebase_repo.list_leagues_by_line_group_id(group_id=GROUP_ID)
+    league_id = league_ids[0]
     players = await app.fpl_service.get_or_update_fpl_gameweek_table(
         gameweek,
-        league_id=league_ids[0],
+        league_id=league_id,
+        ignore_cache=True,
     )
-    league_id = league_ids[0]
-    league_sheet = app.firebase_repo.get_league_google_sheet(league_id)
-    app.message_service.send_gameweek_result_message(
-        gameweek=gameweek,
-        players=players,
-        group_id=GROUP_ID,
-        event_status=None,
-        sheet_url=league_sheet.url,
-    )
-    player_revs = await app.fpl_service.list_players_revenues(league_id=league_id)
-    app.message_service.send_playeres_revenue_summary(
-        players_revenues=player_revs,
-        group_id=GROUP_ID,
-        sheet_url=league_sheet.url,
-    )
+    for p in players:
+        logger.info(p)
+
+    player_revs = await app.fpl_service.list_players_revenues(league_id)
+    for p_rev in player_revs:
+        logger.info(p_rev)
 
 
 if __name__ == "__main__":

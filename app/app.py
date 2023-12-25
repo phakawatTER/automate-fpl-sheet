@@ -26,7 +26,6 @@ class App:
         service_account_cred_path = (
             self.s3_downloader.download_file_from_default_bucket("service_account.json")
         )
-        print(service_account_cred_path)
         service_account_cred = ServiceAccountCredentials.from_json_keyfile_name(
             service_account_cred_path
         )
@@ -46,6 +45,10 @@ class App:
         self.fpl_service = services.FPLService(
             config=self.config,
             google_sheet=google_sheet,
+            fpl_adapter=fpl_adapter,
+            firebase_repo=self.firebase_repo,
+        )
+        self.subscription_service = services.SubscriptionService(
             fpl_adapter=fpl_adapter,
             firebase_repo=self.firebase_repo,
         )

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from typing import List
 from .bootstrap import BootstrapElement
 
@@ -15,6 +15,9 @@ class PlayerGameweekData:
     captain_points: int = 0
     vice_captain_points: int = 0
     bank_account: str = ""
+
+    def to_json(self):
+        return asdict(self)
 
 
 @dataclass
@@ -38,3 +41,24 @@ class PlayerGameweekPicksData:
     event_transfers_cost: int
     event_transfers: int
     picked_elements: List[BootstrapElement]
+
+
+@dataclass
+class LeagueSheet:
+    url: str
+    worksheet: str
+
+    def to_json(self):
+        return asdict(self)
+
+
+@dataclass
+class PlayerData:
+    bank_account: str
+    player_id: int
+    season_rank: int
+    name: str
+    team_name: str
+
+    def to_json(self):
+        return asdict(self)

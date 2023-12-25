@@ -1,20 +1,35 @@
+import os
+import sys
 import asyncio
 from typing import List
+
+root_directory = os.path.dirname(os.path.abspath(__file__))
+project_directory = os.path.dirname(root_directory)
+sys.path.append(project_directory)
+
 from loguru import logger
+from boto3.session import Session
 
-from app import App
+import models
+from plot import Service as PlotService
+from adapter import S3Uploader
+
+SESSION = Session()
+S3_UPLOADER = S3Uploader(session=SESSION, bucket="ds-fpl")
 
 
-async def execute(event: dict) -> List[str]:
-    app = App()
+def execute(event: dict) -> List[str]:
     start_gw: int = event.get("start_gw")
     end_gw: int = event.get("end_gw")
-    league_id: int = event.get("league_id")
-
-    urls = await app.plot_service.generate_overall_gameweeks_plot(
-        start_gw,
-        end_gw,
-        league_id,
+    data: list[list[models.PlayerGameweekData]] = []
+    for gameweek_data in event.get("gameweeks_data"):
+        g = [models.PlayerGameweekData(**d) for d in gameweek_data]
+        data.append(g)
+    plot_service = PlotService(S3_UPLOADER)
+    urls = plot_service.generate_overall_gameweeks_plot(
+        from_gameweek=start_gw,
+        to_gameweek=end_gw,
+        gameweeks_data=data,
     )
 
     for url in urls:
@@ -24,8 +39,7 @@ async def execute(event: dict) -> List[str]:
 
 
 def handler(event, context):
-    loop = asyncio.get_event_loop()
-    urls = loop.run_until_complete(execute(event))
+    urls = execute(event)
 
     return urls
 

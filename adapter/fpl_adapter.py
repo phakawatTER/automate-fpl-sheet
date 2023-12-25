@@ -1,25 +1,7 @@
 from http import HTTPStatus
 from typing import List, Optional
 import httpx
-from models import (
-    H2HResponse,
-    FantasyTeam,
-    PlayerData,
-    PlayerHistory,
-    FPLLeagueStandings,
-    FPLEventStatusResponse,
-    MatchFixture,
-    H2HData,
-    Pick,
-    EntryHistory,
-    PlayerSeasonHistory,
-    FPLTeamStanding,
-    FPLEventStatus,
-    BootstrapGameweek,
-    Bootstrap,
-    BootstrapElement,
-    LiveEventResponse,
-)
+import models
 import util
 
 
@@ -57,7 +39,6 @@ class FPLAdapter:
     def get_element_image_url(element_code: str, width: int = 110, height: int = 140):
         return f"https://resources.premierleague.com/premierleague/photos/players/{width}x{height}/p{element_code}.png"
 
-    # TODO: need to create dataclass for the response so we got type hint
     @util.time_track(description="Get FPL Bootstrap")
     async def get_bootstrap(self):
         url = urljoin(FPLAdapter.BASE_URL, "/api/bootstrap-static")
@@ -67,11 +48,22 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: dict = response.json()
-        bootstrap = Bootstrap(
-            events=[BootstrapGameweek(**d) for d in data.get("events")],
-            elements=[BootstrapElement(**d) for d in data.get("elements")],
+        bootstrap = models.Bootstrap(
+            events=[models.BootstrapGameweek(**d) for d in data.get("events")],
+            elements=[models.BootstrapElement(**d) for d in data.get("elements")],
         )
         return bootstrap
+
+    @util.time_track(description="")
+    async def get_league_entries(self, league_id: int) -> List[models.FPLLeagueEntry]:
+        url = urljoin(FPLAdapter.BASE_URL, f"/api/league/{league_id}/entries")
+        response = await self.__get_request(url)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(
+                f"unexpected http status code: {response.status_code} with response data: {response.content}"
+            )
+        data = response.json()
+        return [models.FPLLeagueEntry(**d) for d in data]
 
     @util.time_track(description="FPLAdapter.get_gameweek_event_status")
     async def get_gameweek_event_status(self):
@@ -83,9 +75,9 @@ class FPLAdapter:
             )
         data: dict = response.json()
 
-        return FPLEventStatusResponse(
+        return models.FPLEventStatusResponse(
             leagues=data.get("leagues"),
-            status=[FPLEventStatus(**d) for d in data.get("status")],
+            status=[models.FPLEventStatus(**d) for d in data.get("status")],
         )
 
     @util.time_track(description="FPLAdapter.get_h2h_league_standing")
@@ -101,11 +93,12 @@ class FPLAdapter:
             )
         data: dict = response.json()
 
-        return FPLLeagueStandings(
+        return models.FPLLeagueStandings(
             league_id=data.get("league").get("id"),
             league_name=data.get("league").get("name"),
             standings=[
-                FPLTeamStanding(**d) for d in data.get("standings").get("results")
+                models.FPLTeamStanding(**d)
+                for d in data.get("standings").get("results")
             ],
         )
 
@@ -123,16 +116,16 @@ class FPLAdapter:
 
         data = response.json()
 
-        return H2HResponse(
+        return models.FPLH2HResponse(
             has_next=data.get("has_next"),
             page=data.get("page"),
-            results=[H2HData(**d) for d in data.get("results")],
+            results=[models.FPLH2HData(**d) for d in data.get("results")],
         )
 
     @util.time_track(description="FPLAdapter.get_player_gameweek_info")
     async def get_player_gameweek_info(
         self, gameweek: int, player_id: int
-    ) -> Optional[PlayerHistory]:
+    ) -> Optional[models.FPLPlayerHistory]:
         url = urljoin(FPLAdapter.BASE_URL, f"/api/element-summary/{player_id}")
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -140,11 +133,13 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: dict = response.json()
-        player_data = PlayerData(
-            history=[PlayerHistory(**d) for d in data.get("history")],
-            history_past=[PlayerSeasonHistory(**d) for d in data.get("history_past")],
+        player_data = models.FPLPlayerData(
+            history=[models.FPLPlayerHistory(**d) for d in data.get("history")],
+            history_past=[
+                models.FPLPlayerSeasonHistory(**d) for d in data.get("history_past")
+            ],
         )
-        history: PlayerHistory = None
+        history: models.FPLPlayerHistory = None
         for h in player_data.history:
             if h.round == gameweek:
                 history = h
@@ -162,15 +157,17 @@ class FPLAdapter:
             )
 
         data: dict = response.json()
-        return FantasyTeam(
+        return models.FPLFantasyTeam(
             active_chip=data.get("active_chip"),
             automatic_subs=data.get("automatic_subs"),
-            entry_history=EntryHistory(**data.get("entry_history")),
-            picks=[Pick(**d) for d in data.get("picks")],
+            entry_history=models.FPLEntryHistory(**data.get("entry_history")),
+            picks=[models.FPLPick(**d) for d in data.get("picks")],
         )
 
     @util.time_track(description="FPLAdapter.list_gameweek_fixtures")
-    async def list_gameweek_fixtures(self, gameweek: int) -> List[MatchFixture]:
+    async def list_gameweek_fixtures(
+        self, gameweek: int
+    ) -> List[models.FPLMatchFixture]:
         url = urljoin(FPLAdapter.BASE_URL, f"/api/fixtures?event={gameweek}")
         response = await self.__get_request(url)
         if response.status_code != HTTPStatus.OK:
@@ -178,7 +175,7 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: List[dict] = response.json()
-        results = [MatchFixture(**d) for d in data]
+        results = [models.FPLMatchFixture(**d) for d in data]
         return results
 
     @util.time_track(description="FPLAdapter.get_gameweek_live_score")
@@ -190,4 +187,4 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: dict = response.json()
-        return LiveEventResponse.create_from_dict(data=data.get("elements"))
+        return models.FPLLiveEventResponse.create_from_dict(data=data.get("elements"))

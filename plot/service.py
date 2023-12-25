@@ -1,11 +1,9 @@
 import os
-import asyncio
 from typing import List, Dict
 import matplotlib.pyplot as plt
 import util
 import models
 from adapter import S3Uploader
-from .fpl_service import Service as FPLService
 
 
 COLORS = [
@@ -25,10 +23,8 @@ COLORS = [
 class Service:
     def __init__(
         self,
-        fpl_service: FPLService,
         s3_uploader: S3Uploader,
     ):
-        self.__fpl_service = fpl_service
         self.__s3_uploader = s3_uploader
 
     def __get_file_name_from_path(self, file_path: str) -> str:
@@ -36,38 +32,25 @@ class Service:
         return file_name
 
     @util.time_track(description="Generate overall gameweek revenue plot")
-    async def generate_overall_gameweeks_plot(
+    def generate_overall_gameweeks_plot(
         self,
         from_gameweek: int,
         to_gameweek: int,
-        league_id: int,
+        gameweeks_data: List[List[models.PlayerGameweekData]],
     ) -> List[str]:
         players_dict: Dict[str, List[models.PlayerGameweekData]] = {}
-        gameweek_futures = []
-        gameweeks: List[str] = []
+        gameweeks: List[str] = [
+            f"GW{gw}" for gw in range(from_gameweek, to_gameweek + 1, 1)
+        ]
 
-        for i in range(from_gameweek, to_gameweek + 1, 1):
-            future = asyncio.ensure_future(
-                self.__fpl_service.get_or_update_fpl_gameweek_table(
-                    gameweek=i,
-                    league_id=league_id,
-                )
-            )
-            gameweek_futures.append(future)
-            gameweeks.append(f"GW{i}")
-
-        future_results: List[List[models.PlayerGameweekData]] = await asyncio.gather(
-            *gameweek_futures
-        )
-
-        for gameweek_players in future_results:
+        for gameweek_players in gameweeks_data:
             for player in gameweek_players:
-                if player.name not in players_dict:
-                    players_dict[player.name] = [player]
+                if player.player_id not in players_dict:
+                    players_dict[player.player_id] = [player]
                 else:
-                    players_dict[player.name].append(player)
+                    players_dict[player.player_id].append(player)
 
-        player_names = list(players_dict)
+        player_ids = list(players_dict)
         player_points: List[List[int]] = []
         for _, gameweek_results in players_dict.items():
             player_rewards = [gw.reward for gw in gameweek_results]
@@ -78,15 +61,15 @@ class Service:
                     player_reward += _reward
                 cummulative_rewards.append(player_reward)
             player_points.append(cummulative_rewards)
-
         plot_destinations: List[str] = []
         # Plotting the trend graph
         plt.figure(figsize=(12, 6))
-        for i, player_name in enumerate(player_names):
+        for i, player_id in enumerate(player_ids):
+            player_id = players_dict[player_id][0].name
             plt.plot(
                 gameweeks,
                 player_points[i],
-                label=player_name,
+                label=player_id,
                 marker="o",
                 color=COLORS[i % len(COLORS)],
             )
@@ -103,7 +86,8 @@ class Service:
             plot_destinations.append(plot_destination)
 
         # generate all
-        for i, player_name in enumerate(player_names):
+        for i, player_id in enumerate(player_ids):
+            player_name = players_dict[player_id][0].name
             plt.plot(
                 gameweeks,
                 player_points[i],
@@ -118,7 +102,7 @@ class Service:
             plt.legend()
             plt.grid(True)
 
-            if i == len(player_names) - 1:
+            if i == len(player_ids) - 1:
                 plot_destination = "/tmp/figure_all.png"
                 plt.savefig(plot_destination, bbox_inches="tight")
                 plot_destinations.append(plot_destination)

@@ -4,14 +4,14 @@ from datetime import datetime, timezone, date
 
 
 @dataclass
-class H2HResponse:
+class FPLH2HResponse:
     has_next: bool
     page: int
-    results: List["H2HData"]
+    results: List["FPLH2HData"]
 
 
 @dataclass
-class H2HData:
+class FPLH2HData:
     id: int
     entry_1_entry: int
     entry_1_name: str
@@ -40,15 +40,15 @@ class H2HData:
 
 
 @dataclass
-class FantasyTeam:
+class FPLFantasyTeam:
     active_chip: str
     automatic_subs: List[int]
-    entry_history: "EntryHistory"
-    picks: List["Pick"]
+    entry_history: "FPLEntryHistory"
+    picks: List["FPLPick"]
 
 
 @dataclass
-class EntryHistory:
+class FPLEntryHistory:
     event: int
     points: int
     total_points: int
@@ -63,7 +63,7 @@ class EntryHistory:
 
 
 @dataclass
-class Pick:
+class FPLPick:
     element: int
     position: int
     multiplier: int
@@ -72,13 +72,13 @@ class Pick:
 
 
 @dataclass
-class PlayerData:
-    history: List["PlayerHistory"]
-    history_past: List["PlayerSeasonHistory"]
+class FPLPlayerData:
+    history: List["FPLPlayerHistory"]
+    history_past: List["FPLPlayerSeasonHistory"]
 
 
 @dataclass
-class PlayerHistory:
+class FPLPlayerHistory:
     element: int
     fixture: int
     opponent_team: int
@@ -118,7 +118,7 @@ class PlayerHistory:
 
 
 @dataclass
-class PlayerSeasonHistory:
+class FPLPlayerSeasonHistory:
     season_name: str
     element_code: int
     start_cost: float
@@ -195,7 +195,7 @@ class FPLEventStatus:
 
 
 @dataclass
-class MatchFixture:
+class FPLMatchFixture:
     code: int
     event: int
     finished: bool
@@ -225,7 +225,7 @@ class MatchFixture:
 
 
 @dataclass
-class PlayerStats:
+class FPLPlayerStats:
     minutes: int
     goals_scored: int
     assists: int
@@ -253,30 +253,37 @@ class PlayerStats:
 
     @staticmethod
     def create_from_dict(data: dict):
-        return PlayerStats(**data)
+        return FPLPlayerStats(**data)
 
 
 @dataclass
-class LiveEventElement:
+class FPLLiveEventElement:
     id: int
-    stats: PlayerStats
+    stats: FPLPlayerStats
     explain: any
 
     @staticmethod
     def create_from_dict(data: dict):
-        return LiveEventElement(
+        return FPLLiveEventElement(
             id=data.get("id"),
             explain=data.get("explain"),
-            stats=PlayerStats.create_from_dict(data=data.get("stats")),
+            stats=FPLPlayerStats.create_from_dict(data=data.get("stats")),
         )
 
 
 @dataclass
-class LiveEventResponse:
-    elements: List[LiveEventElement]
+class FPLLiveEventResponse:
+    elements: List[FPLLiveEventElement]
 
     @staticmethod
     def create_from_dict(data: List[dict]):
-        return LiveEventResponse(
-            elements=[LiveEventElement.create_from_dict(d) for d in data]
+        return FPLLiveEventResponse(
+            elements=[FPLLiveEventElement.create_from_dict(d) for d in data]
         )
+
+
+@dataclass
+class FPLLeagueEntry:
+    entry: int
+    entry_name: str
+    player_name: str
