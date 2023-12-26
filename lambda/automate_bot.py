@@ -19,7 +19,6 @@ async def execute():
     line_channel_ids = _APP.firebase_repo.list_line_channels()
     for group_id in line_channel_ids:
         league_id = _APP.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
-        league_sheet = _APP.firebase_repo.get_league_google_sheet(league_id)
         players = await _APP.fpl_service.get_or_update_fpl_gameweek_table(
             gw_status.event,
             league_id,
@@ -28,7 +27,6 @@ async def execute():
             gw_status.event,
             players,
             group_id=group_id,
-            sheet_url=league_sheet.url,
         )
 
     return 0

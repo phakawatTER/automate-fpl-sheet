@@ -8,6 +8,9 @@ deployment_package/
 package.zip
 layer/
 layer_numpy/
+layer_plot_generator/
 template-export.yml
 env_fpl/
+env_plot_generator/
 requirement.deploy.txt
+requirement.deploy2.txt

@@ -88,7 +88,7 @@ COMMON_FOOTER = {
 
 
 class _CommonHero:
-    def __init__(self, sheet_url: str):
+    def __init__(self):
         self.container = {
             "type": "bubble",
             "size": "giga",
@@ -98,7 +98,6 @@ class _CommonHero:
                 "size": "full",
                 "aspectRatio": "20:13",
                 "aspectMode": "cover",
-                "action": {"type": "uri", "uri": sheet_url},
             },
             "body": {
                 "type": "box",
@@ -114,8 +113,8 @@ class _CommonHero:
 
 
 class GameweekReminderMessage(_CommonHero):
-    def __init__(self, sheet_url: str, gameweek: int):
-        super().__init__(sheet_url=sheet_url)
+    def __init__(self, gameweek: int):
+        super().__init__()
         self.gameweek = gameweek
 
     def build(self):
@@ -159,10 +158,9 @@ class GameweekResultMessage(_CommonHero):
         self,
         players: List[PlayerGameweekData],
         gameweek: int,
-        sheet_url: str,
         event_status: Optional[FPLEventStatusResponse] = None,
     ):
-        super().__init__(sheet_url=sheet_url)
+        super().__init__()
         self.players = players
         self.gameweek = gameweek
         self.event_status = event_status
@@ -215,7 +213,7 @@ class GameweekResultMessage(_CommonHero):
             rank = ""
             for numb in rank_str:
                 rank += EMOJI_NUMBER_MAP[numb]
-            player_name = f"{rank} {player.name}"
+            player_name = f"{rank} {player.team_name}"
             is_top_3 = i <= 2
             if is_top_3:
                 player_name += f" {top3_icons[i]}"
@@ -261,7 +259,10 @@ class GameweekResultMessage(_CommonHero):
                     "contents": [
                         {
                             "type": "text",
-                            "text": player.bank_account,
+                            "text": player.bank_account
+                            if player.bank_account is not None
+                            and player.bank_account != ""
+                            else player.name,
                             "color": Color.NORMAL,
                             "size": "sm",
                             "flex": 5,
@@ -307,8 +308,8 @@ class GameweekResultMessage(_CommonHero):
 
 
 class RevenueMessage(_CommonHero):
-    def __init__(self, sheet_url: str, players_revenues: List[PlayerRevenue]):
-        super().__init__(sheet_url=sheet_url)
+    def __init__(self, players_revenues: List[PlayerRevenue]):
+        super().__init__()
         self.players_revenues = players_revenues
 
     def build(self):
@@ -328,7 +329,7 @@ class RevenueMessage(_CommonHero):
 
         for i, player in enumerate(self.players_revenues):
             revenue = player.revenue
-            name = player.name
+            name = player.team_name
             is_top_3 = i <= 2
             if is_top_3:
                 name += f" {top3_icons[i]}"
@@ -765,8 +766,8 @@ class PlayerGameweekPickMessageV2:
 
 
 class BotInstructionMessage(_CommonHero):
-    def __init__(self, sheet_url: str, commands_map_list: List[tuple[str]]):
-        super().__init__(sheet_url=sheet_url)
+    def __init__(self, commands_map_list: List[tuple[str]]):
+        super().__init__()
         self.commands_map_list = commands_map_list
 
     def build(self):

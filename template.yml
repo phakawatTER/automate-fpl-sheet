@@ -75,6 +75,17 @@ Resources:
       ContentUri: ./layer # Path to the folder containing Node.js modules for the layer
       Description: FPL Line Message API Layer
 
+  FPLPlotGeneratorLayer:
+    Type: "AWS::Serverless::LayerVersion"
+    Properties:
+      LayerName: FPLPlotGeneratorLayer
+      CompatibleRuntimes:
+        - python3.9
+      CompatibleArchitectures:
+        - "x86_64"
+      ContentUri: ./layer_plot_generator # Path to the folder containing Node.js modules for the layer
+      Description: FPL Line Message API Layer
+
   FPLLineMessageAPI:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -94,18 +105,18 @@ Resources:
             Path: /{proxy+}
             Method: Any
   # NOTE: ignore this lambda for now. need to plan out on how to separate dependencies for this plot
-  # FPLPlotGenerator:
-  #   Type: "AWS::Serverless::Function"
-  #   Properties:
-  #     Layers:
-  #       - !Ref FPLPythonLayer
-  #     FunctionName: FPLPlotGenerator
-  #     Handler: "lambda/plot_generator.handler"
-  #     CodeUri: "./deployment_package"
-  #     Role: !GetAtt FPLPolicy.Arn
-  #     Runtime: python3.9
-  #     Timeout: 300
-  #     MemorySize: 2048
+  FPLPlotGenerator:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Layers:
+        - !Ref FPLPlotGeneratorLayer
+      FunctionName: FPLPlotGenerator
+      Handler: "lambda/plot_generator.handler"
+      CodeUri: "./deployment_package"
+      Role: !GetAtt FPLPolicy.Arn
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 2048
 
   FPLLineUpNotificationTask:
     Type: "AWS::Serverless::Function"

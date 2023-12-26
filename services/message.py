@@ -38,13 +38,11 @@ class MessageService:
         gameweek: int,
         players: List[models.PlayerGameweekData],
         group_id: str,
-        sheet_url: str,
         event_status: Optional[models.FPLEventStatusResponse] = None,
     ):
         message = GameweekResultMessage(
             gameweek=gameweek,
             players=players,
-            sheet_url=sheet_url,
             event_status=event_status,
         )
 
@@ -58,11 +56,9 @@ class MessageService:
         self,
         players_revenues: List[models.PlayerRevenue],
         group_id: str,
-        sheet_url: str,
     ):
         message = RevenueMessage(
             players_revenues=players_revenues,
-            sheet_url=sheet_url,
         )
 
         self.bot.send_flex_message(
@@ -73,9 +69,8 @@ class MessageService:
         self,
         gameweek: int,
         group_id: str,
-        sheet_url: str,
     ):
-        message = GameweekReminderMessage(sheet_url=sheet_url, gameweek=gameweek)
+        message = GameweekReminderMessage(gameweek=gameweek)
         self.bot.send_flex_message(
             group_id=group_id,
             flex_message=message.build(),
@@ -88,7 +83,6 @@ class MessageService:
         event_statuses: List[Optional[models.FPLEventStatusResponse]],
         gameweeks: List[int],
         group_id: str,
-        sheet_url: str,
     ):
         step_size = 8
         for i in range(0, len(gameweek_players), step_size):
@@ -106,7 +100,6 @@ class MessageService:
                     players=players,
                     event_status=event_status,
                     gameweek=gameweek,
-                    sheet_url=sheet_url,
                 )
                 messages.append(m.build())
 
@@ -140,11 +133,8 @@ class MessageService:
         self,
         group_id: str,
         commands_map_list: List[tuple[str]],
-        sheet_url: str,
     ):
-        message = BotInstructionMessage(
-            sheet_url=sheet_url, commands_map_list=commands_map_list
-        ).build()
+        message = BotInstructionMessage(commands_map_list=commands_map_list).build()
         self.bot.send_flex_message(
             group_id=group_id, flex_message=message, alt_text="Luka Bot instructions"
         )
