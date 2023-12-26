@@ -259,7 +259,7 @@ def new_line_message_handler(app: App):
                     + "\n"
                 )
                 if p.bank_account is not None and p.bank_account != "":
-                    text += f"- {p.bank_account}\n"
+                    text += f"💸 {p.bank_account}\n"
             self.__message_service.send_text_message(text=text, group_id=group_id)
 
         def handle_set_league_player_bank_account(
@@ -286,6 +286,7 @@ def new_line_message_handler(app: App):
             )
             text = f'🎉 You have successfully update "{player.name}" \'s bank account'
             self.__message_service.send_text_message(text=text, group_id=group_id)
+            self.handle_list_league_players(group_id)
 
         @run_in_error_wrapper(message_service=app.message_service)
         async def handle_players_gameweek_picks(self, gameweek: int, group_id: str):
