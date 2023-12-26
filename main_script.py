@@ -43,6 +43,12 @@ async def main():
     for p_rev in player_revs:
         logger.info(p_rev)
 
+    player_picks = await app.fpl_service.list_player_gameweek_picks(
+        gameweek=gameweek, league_id=league_id
+    )
+    for pick in player_picks:
+        logger.info(pick)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

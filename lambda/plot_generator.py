@@ -39,9 +39,14 @@ def execute(event: dict) -> List[str]:
 
 
 def handler(event, context):
-    urls = execute(event)
-
-    return urls
+    try:
+        urls = execute(event)
+        return urls
+    except Exception as e:
+        return {
+            "StatusCode": 500,
+            "ErrorMessage": e,
+        }
 
 
 if __name__ == "__main__":

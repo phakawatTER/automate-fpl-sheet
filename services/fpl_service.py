@@ -2,9 +2,7 @@ import json
 import asyncio
 from dataclasses import asdict
 from typing import Dict, List, Optional
-from datetime import datetime
 from loguru import logger
-from gspread import Worksheet
 from adapter import FPLAdapter, GoogleSheet, DynamoDB
 from config import Config
 from models import (
@@ -24,9 +22,6 @@ from .firebase_repo import FirebaseRepo
 
 
 CACHE_TABLE_NAME = "FPLCacheTable"
-# F4
-START_POINT_COL = 6
-START_POINT_ROW = 4
 
 
 class Service:
@@ -90,7 +85,7 @@ class Service:
         results = h2h_result.results
         ignored_players = self.firebase_repo.list_league_ignored_players(league_id)
         ignored_players.append(None)
-
+        league_players = self.firebase_repo.list_league_players(league_id)
         for result in results:
             # player 1
             p1_name = result.entry_1_name
@@ -102,9 +97,13 @@ class Service:
             p2_id = result.entry_2_entry
 
             if p1_id not in ignored_players:
-                players_points_map[p1_id] = PlayerGameweekData(p1_name, p1_id, p1_point)
+                players_points_map[p1_id] = PlayerGameweekData(
+                    team_name=p1_name, player_id=p1_id, points=p1_point
+                )
             if p2_id not in ignored_players:
-                players_points_map[p2_id] = PlayerGameweekData(p2_name, p2_id, p2_point)
+                players_points_map[p2_id] = PlayerGameweekData(
+                    team_name=p2_name, player_id=p2_id, points=p2_point
+                )
 
         futures = []
         for _, player in players_points_map.items():
@@ -118,6 +117,13 @@ class Service:
         # Sorting the list of PlayerResultData instances by the 'point' attribute
         players = sorted(players, key=lambda player: player.points, reverse=True)
         players = self.__expand_check_dupl_point(players=players)
+
+        for p in players:
+            for fp in league_players:
+                if fp.player_id == p.player_id:
+                    p.name = fp.name
+                    p.bank_account = fp.bank_account
+
         return players
 
     @util.time_track(description="Update FPL Table")
@@ -173,11 +179,6 @@ class Service:
 
         return players
 
-    def __get_player_ids_range_from_sheet(self, num_players: int):
-        start = util.convert_to_a1_notation(4, 1)
-        stop = util.convert_to_a1_notation(4 + num_players - 1, 1)
-        return f"{start}:{stop}"
-
     async def list_players_revenues(self, league_id: int):
         current_gameweek_status = await self.get_current_gameweek()
         current_gameweek = current_gameweek_status.event
@@ -187,7 +188,9 @@ class Service:
         player_revs_map: Dict[int, PlayerRevenue] = {}
 
         for p in players:
-            player_revs_map[p.player_id] = PlayerRevenue(name=p.name, revenue=0)
+            player_revs_map[p.player_id] = PlayerRevenue(
+                name=p.name, revenue=0, team_name=p.team_name
+            )
 
         for gw in range(1, current_gameweek + 1, 1):
             gameweek_results = self.firebase_repo.get_league_gameweek_results(
@@ -249,118 +252,6 @@ class Service:
                 return None
         return status
 
-    async def __should_add_shared_result(self):
-        now_date = datetime.utcnow().date()
-        status_result = await self.fpl_adapter.get_gameweek_event_status()
-        last_gameweek: Optional[FPLEventStatus] = None
-
-        for s in status_result.status:
-            if last_gameweek is None:
-                last_gameweek = s
-            elif last_gameweek.date < s.date:
-                last_gameweek = s
-
-        assert last_gameweek is not None
-        if (
-            now_date >= last_gameweek.date
-            and last_gameweek.bonus_added
-            and status_result.leagues == "Updated"
-        ):
-            return True
-
-        return False
-
-    @util.time_track(description="Update Players Reward from Sheet")
-    def __update_players_reward_from_sheet(
-        self,
-        players: List[PlayerGameweekData],
-        start_point_row: int,
-        current_reward_col: int,
-        league_id: int,
-        worksheet: Worksheet,
-    ):
-        players_data = self.list_league_players(league_id)
-        cell_notations = []
-        # update reward of each players
-        for i, player_data in enumerate(players_data):
-            for player in players:
-                if player.player_id == int(player_data.player_id):
-                    player.bank_account = player_data.bank_account
-                    current_point_row = start_point_row + i
-                    cell_notation = util.convert_to_a1_notation(
-                        current_point_row, current_reward_col
-                    )
-                    cell_notations.append(cell_notation)
-                    player.sheet_row = current_point_row
-
-        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
-        cells = worksheet.range(cell_range)
-        for player in players:
-            for row, cell in enumerate(cells, start=start_point_row):
-                if row == player.sheet_row:
-                    cell_value = cell.numeric_value
-                    player.reward = cell_value
-
-    def __update_players_shared_reward(
-        self,
-        players: List[PlayerGameweekData],
-        current_reward_col: int,
-        worksheet: Worksheet,
-    ):
-        players_with_shared_reward: List[PlayerGameweekData] = [
-            player for player in players if player.reward_division > 1
-        ]
-        if len(players_with_shared_reward) == 0:
-            return
-        player_new_reward_map: Dict[int, float] = {}
-        cell_notations: List[str] = []
-        cell_values: List[List[float, 1]] = []
-        for player in players_with_shared_reward:
-            sum_reward_amount = 0
-            for _player in players:
-                if _player.player_id in player.shared_reward_player_ids:
-                    sum_reward_amount += _player.reward
-            new_reward = sum_reward_amount / player.reward_division
-            cell_notation = util.convert_to_a1_notation(
-                player.sheet_row, current_reward_col
-            )
-            cell_notations.append(cell_notation)
-            cell_values.append([new_reward])
-            player_new_reward_map[player.player_id] = new_reward
-
-        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
-        worksheet.update(cell_range, cell_values)
-
-        for player in players_with_shared_reward:
-            player.reward = player_new_reward_map[player.player_id]
-
-    @util.time_track(description="Update Players point in Sheet")
-    def __update_players_points_map_in_sheet(
-        self,
-        players: List[PlayerGameweekData],
-        start_point_row: int,
-        current_point_col: int,
-        worksheet: Worksheet,
-        league_id: int,
-    ):
-        player_ids_range = self.__get_player_ids_range_from_sheet(league_id)
-        player_ids = [t.value for t in worksheet.range(player_ids_range)]
-
-        cell_notations: List[str] = []
-        cell_values: List[List[float]] = []
-        for i, player_id in enumerate(player_ids):
-            for player in players:
-                if player.player_id == int(player_id):
-                    current_point_row = start_point_row + i
-                    cell_notation = util.convert_to_a1_notation(
-                        current_point_row, current_point_col
-                    )
-                    cell_notations.append(cell_notation)
-                    cell_values.append([player.points])
-                    break
-        cell_range = f"{cell_notations[0]}:{cell_notations[-1]}"
-        worksheet.update(cell_range, cell_values)
-
     def __expand_check_dupl_point(self, players: List[PlayerGameweekData]):
         players_points_map = [p.points for p in players]
         for i, p in enumerate(players):
@@ -393,7 +284,7 @@ class Service:
 
         data = item.get("DATA").get("S")
         players_objs = json.loads(data)
-        player_data_dict = dict.fromkeys(PlayerGameweekData().__dict__.keys())
+        player_data_dict = dict.fromkeys(PlayerGameweekData().to_json().keys())
         players: List[PlayerGameweekData] = []
         for player_obj in players_objs:
             init_dict = {}
@@ -417,7 +308,10 @@ class Service:
         return element_map
 
     async def __list_fantasy_teams(self, gameweek: int, league_id: int):
+        ignore_player_ids = self.firebase_repo.list_league_ignored_players(league_id)
         players_data = self.list_league_players(league_id)
+        players_data = [p for p in players_data if p.player_id not in ignore_player_ids]
+
         player_picks_dict = {}
         futures = []
         for player_data in players_data:

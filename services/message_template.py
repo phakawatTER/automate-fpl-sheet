@@ -213,7 +213,7 @@ class GameweekResultMessage(_CommonHero):
             rank = ""
             for numb in rank_str:
                 rank += EMOJI_NUMBER_MAP[numb]
-            player_name = f"{rank} {player.name}"
+            player_name = f"{rank} {player.team_name}"
             is_top_3 = i <= 2
             if is_top_3:
                 player_name += f" {top3_icons[i]}"
@@ -260,7 +260,8 @@ class GameweekResultMessage(_CommonHero):
                         {
                             "type": "text",
                             "text": player.bank_account
-                            if player.bank_account
+                            if player.bank_account is not None
+                            and player.bank_account != ""
                             else player.name,
                             "color": Color.NORMAL,
                             "size": "sm",
@@ -328,7 +329,7 @@ class RevenueMessage(_CommonHero):
 
         for i, player in enumerate(self.players_revenues):
             revenue = player.revenue
-            name = player.name
+            name = player.team_name
             is_top_3 = i <= 2
             if is_top_3:
                 name += f" {top3_icons[i]}"
