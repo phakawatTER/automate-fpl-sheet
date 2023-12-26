@@ -214,7 +214,7 @@ class GameweekResultMessage(_CommonHero):
             for numb in rank_str:
                 rank += EMOJI_NUMBER_MAP[numb]
             player_name = f"{rank} {player.team_name}"
-            is_top_3 = i <= 2
+            is_top_3 = i <= 2 and player.reward > 0
             if is_top_3:
                 player_name += f" {top3_icons[i]}"
             else:

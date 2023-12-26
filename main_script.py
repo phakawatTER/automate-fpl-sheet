@@ -36,18 +36,19 @@ async def main():
         league_id=league_id,
         ignore_cache=True,
     )
-    for p in players:
-        logger.info(p)
 
-    player_revs = await app.fpl_service.list_players_revenues(league_id)
-    for p_rev in player_revs:
-        logger.info(p_rev)
-
-    player_picks = await app.fpl_service.list_player_gameweek_picks(
-        gameweek=gameweek, league_id=league_id
+    app.message_service.send_gameweek_result_message(
+        gameweek=gameweek,
+        players=players,
+        group_id=GROUP_ID,
+        event_status=None,
     )
-    for pick in player_picks:
-        logger.info(pick)
+
+    # player_revs = await app.fpl_service.list_players_revenues(league_id)
+
+    # player_picks = await app.fpl_service.list_player_gameweek_picks(
+    #     gameweek=gameweek, league_id=league_id
+    # )
 
 
 if __name__ == "__main__":

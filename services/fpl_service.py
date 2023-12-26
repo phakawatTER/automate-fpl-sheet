@@ -158,7 +158,7 @@ class Service:
             sum_reward = 0
             for inner_p in players_with_shared_reward:
                 sum_reward += inner_p.reward
-            new_reward = sum_reward / p.reward_division
+            new_reward = round(sum_reward / p.reward_division, 2)
             new_reward_map[p.player_id] = new_reward
 
         for p in players_with_shared_reward:
@@ -189,7 +189,9 @@ class Service:
 
         for p in players:
             player_revs_map[p.player_id] = PlayerRevenue(
-                name=p.name, revenue=0, team_name=p.team_name
+                name=p.name,
+                revenue=0,
+                team_name=p.team_name,
             )
 
         for gw in range(1, current_gameweek + 1, 1):
@@ -258,7 +260,7 @@ class Service:
             for j, point in enumerate(players_points_map):
                 if i == j:
                     continue
-                if util.is_equal_float(point, p.points):
+                if util.is_equal_float(point, p.points) and p.points > 1:
                     p.reward_division += 1
                     p.shared_reward_player_ids.append(players[j].player_id)
 
@@ -294,10 +296,6 @@ class Service:
             players.append(player)
         return players
 
-    def list_league_players(self, league_id: int):
-        players = self.firebase_repo.list_league_players(league_id)
-        return players
-
     async def get_gameweek_live_event(
         self, gameweek: int
     ) -> dict[int, FPLLiveEventElement]:
@@ -309,7 +307,7 @@ class Service:
 
     async def __list_fantasy_teams(self, gameweek: int, league_id: int):
         ignore_player_ids = self.firebase_repo.list_league_ignored_players(league_id)
-        players_data = self.list_league_players(league_id)
+        players_data = self.firebase_repo.list_league_players(league_id)
         players_data = [p for p in players_data if p.player_id not in ignore_player_ids]
 
         player_picks_dict = {}
