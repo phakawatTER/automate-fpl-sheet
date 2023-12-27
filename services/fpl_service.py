@@ -3,7 +3,7 @@ import asyncio
 from dataclasses import asdict
 from typing import Dict, List, Optional
 from loguru import logger
-from adapter import FPLAdapter, GoogleSheet, DynamoDB
+from adapter import FPLAdapter, DynamoDB
 from config import Config
 from models import (
     PlayerGameweekData,
@@ -31,13 +31,11 @@ def _construct_cache_hash(league_id, gameweek):
 class Service:
     def __init__(
         self,
-        google_sheet: GoogleSheet,
         config: Config,
         fpl_adapter: FPLAdapter,
         firebase_repo: FirebaseRepo,
     ):
         self.config = config
-        self.google_sheet = google_sheet
         self.fpl_adapter = fpl_adapter
         self.dynamodb = DynamoDB(table_name=CACHE_TABLE_NAME)
         self.firebase_repo = firebase_repo

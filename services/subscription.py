@@ -40,10 +40,3 @@ class Service:
         except Exception as e:
             logger.error(f"error subscribe league with error: {e}")
             return False
-
-    def update_league_sheet(self, league_id: int, url: str, worksheet_name: str):
-        league_sheet = models.LeagueSheet(url=url, worksheet=worksheet_name)
-        return self.__firebase_repo.put_league_sheet(
-            league_id=league_id,
-            league_sheet=league_sheet,
-        )

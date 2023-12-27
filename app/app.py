@@ -1,9 +1,8 @@
 from boto3.session import Session
-from oauth2client.service_account import ServiceAccountCredentials
 import services
 import util
 from config import Config
-from adapter import S3Downloader, GoogleSheet, FPLAdapter, S3Uploader, StateMachine
+from adapter import S3Downloader, FPLAdapter, S3Uploader, StateMachine
 from database import FirebaseRealtimeDatabase
 from line import LineBot
 
@@ -26,13 +25,9 @@ class App:
         service_account_cred_path = (
             self.s3_downloader.download_file_from_default_bucket("service_account.json")
         )
-        service_account_cred = ServiceAccountCredentials.from_json_keyfile_name(
-            service_account_cred_path
-        )
         self.config = Config(path_to_config=config_path)
         self.linebot = LineBot(config=self.config)
         self.message_service = services.MessageService(bot=self.linebot)
-        google_sheet = GoogleSheet(credential=service_account_cred)
 
         fpl_adapter = FPLAdapter(cookies=self.config.cookies)
 
@@ -44,7 +39,6 @@ class App:
 
         self.fpl_service = services.FPLService(
             config=self.config,
-            google_sheet=google_sheet,
             fpl_adapter=fpl_adapter,
             firebase_repo=self.firebase_repo,
         )
