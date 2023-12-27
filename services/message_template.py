@@ -42,7 +42,10 @@ class Color:
     WARNING2 = "#FFAB1B"
 
 
-BACKGROUND_COLOR = "#393646"
+BACKGROUND_COLOR = "#37003C"
+FPL_TEXT_COLOR = "#37003C"
+FPL_PRIMARY_COLOR = "#00FF87"
+FPL_SECONDARY_COLOR = "#02EFFF"
 
 EMOJI_NUMBER_MAP = {
     "0": "0️⃣",
@@ -502,6 +505,18 @@ class PlayerGameweekPickMessageV2:
                 "offsetEnd": "0px",
                 "offsetTop": "0px",
             },
+            {
+                "type": "image",
+                "url": background_url,
+                "size": "full",
+                "aspectMode": "cover",
+                "aspectRatio": "1:3",
+                "position": "absolute",
+                "align": "start",
+                "gravity": "top",
+                "offsetEnd": "15px",
+                "offsetTop": "0px",
+            },
         ]
         return contents
 
@@ -511,12 +526,19 @@ class PlayerGameweekPickMessageV2:
         transfer_count = self.player_picks.event_transfers
         for p in self.player_picks.picked_elements:
             if not p.is_subsituition:
-                total_points += p.total_points
+                total_points += (
+                    p.gameweek_points if p.gameweek_points is not None else 0
+                )
         total_points = total_points - transfer_cost
         return {
             "type": "box",
             "layout": "horizontal",
-            "backgroundColor": BACKGROUND_COLOR,
+            "background": {
+                "type": "linearGradient",
+                "angle": "90deg",
+                "startColor": FPL_PRIMARY_COLOR,
+                "endColor": FPL_SECONDARY_COLOR,
+            },
             "contents": [
                 {
                     "type": "box",
@@ -541,13 +563,13 @@ class PlayerGameweekPickMessageV2:
                             "size": "xl",
                             "text": f"Gameweek {self.gameweek}",
                             "weight": "bold",
-                            "color": Color.TOPIC,
+                            "color": FPL_TEXT_COLOR,
                         },
                         {
                             "type": "text",
                             "size": "md",
                             "text": self.player_picks.player.team_name,
-                            "color": Color.NORMAL,
+                            "color": FPL_TEXT_COLOR,
                         },
                     ],
                 },
@@ -562,7 +584,7 @@ class PlayerGameweekPickMessageV2:
                             "align": "end",
                             "text": "Final Points",
                             "size": "xxs",
-                            "color": Color.TOPIC,
+                            "color": FPL_TEXT_COLOR,
                         },
                         {
                             "type": "text",
@@ -570,21 +592,25 @@ class PlayerGameweekPickMessageV2:
                             "text": f"{total_points}",
                             "size": "xxl",
                             "weight": "bold",
-                            "color": Color.TOPIC if total_points >= 0 else Color.DANGER,
+                            "color": FPL_TEXT_COLOR
+                            if total_points >= 0
+                            else Color.DANGER,
                         },
                         {
                             "type": "text",
                             "align": "end",
                             "text": "Transfers",
                             "size": "xxs",
-                            "color": Color.TOPIC,
+                            "color": FPL_TEXT_COLOR,
                         },
                         {
                             "type": "text",
                             "align": "end",
                             "text": f"{transfer_count} ({-transfer_cost})",
                             "size": "md",
-                            "color": Color.TOPIC if total_points >= 0 else Color.DANGER,
+                            "color": FPL_TEXT_COLOR
+                            if total_points >= 0
+                            else Color.DANGER,
                         },
                     ],
                 },
@@ -715,7 +741,9 @@ class PlayerGameweekPickMessageV2:
                         "contents": [
                             {
                                 "type": "text",
-                                "text": f"{p.total_points}",
+                                "text": f"{p.gameweek_points}"
+                                if p.gameweek_points is not None
+                                else "-",
                                 "weight": "bold",
                                 "size": "xs",
                                 "align": "center",

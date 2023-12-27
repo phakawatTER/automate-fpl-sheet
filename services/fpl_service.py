@@ -336,7 +336,7 @@ class Service:
 
     @util.time_track(description="List player gameweek picks")
     async def list_player_gameweek_picks(self, gameweek: int, league_id: int):
-        gameweek_live_event: Dict[
+        gameweek_live_event_dict: Dict[
             int, FPLLiveEventElement
         ] = await self.get_gameweek_live_event(gameweek=gameweek)
         fantasy_teams, players_data = await self.__list_fantasy_teams(
@@ -358,10 +358,13 @@ class Service:
                         new_element.pick_position = pick.position
                         new_element.is_captain = pick.is_captain
                         new_element.is_vice_captain = pick.is_vice_captain
-                        new_element.total_points = gameweek_live_event[
-                            element.id
-                        ].stats.total_points * (
+                        gameweek_live_event = gameweek_live_event_dict[element.id]
+                        gameweek_minutes_played = gameweek_live_event.stats.minutes
+                        gameweek_points = gameweek_live_event.stats.total_points * (
                             pick.multiplier if pick.multiplier > 0 else 1
+                        )
+                        new_element.gameweek_points = (
+                            gameweek_points if gameweek_minutes_played > 0 else None
                         )
 
                         picks.append(new_element)

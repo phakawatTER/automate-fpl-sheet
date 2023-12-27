@@ -1,3 +1,5 @@
+import json
+import math
 from typing import List, Optional
 from line import LineBot
 import models
@@ -11,6 +13,8 @@ from .message_template import (
 )
 
 STEP_SIZE = 4
+CAROUSEL_SIZE_LIMIT = 50  # in KB
+BUBBLE_SIZE_LIMIT = 30  # in KB
 
 
 class MessageService:
@@ -19,6 +23,14 @@ class MessageService:
         bot: LineBot,
     ):
         self.bot = bot
+
+    def __calculate_flex_message_size_bytes(self, message: dict) -> float:
+        # Convert Python object to JSON-formatted string
+        json_str = json.dumps(message, separators=(",", ":"))
+
+        # Calculate the size of the string in kilobytes
+        size_in_kb = len(json_str.encode("utf-8")) / 1024
+        return size_in_kb
 
     def send_text_message(self, text: str, group_id: str):
         self.bot.send_text_message(group_id, text=text)
@@ -114,17 +126,29 @@ class MessageService:
         player_gameweek_picks: List[models.PlayerGameweekPicksData],
         group_id: str,
     ):
-        for i in range(0, len(player_gameweek_picks), STEP_SIZE):
-            j = i + STEP_SIZE
-            if j > len(player_gameweek_picks):
-                j = len(player_gameweek_picks)
-            messages = []
-            for p in player_gameweek_picks[i:j]:
-                message = PlayerGameweekPickMessageV2(gameweek=gameweek, player_picks=p)
-                messages.append(message.build())
-            message = CarouselMessage(messages=messages)
+        temp_player_gameweek_picks = [*player_gameweek_picks]
+        messages = []
+        for player_picks in temp_player_gameweek_picks:
+            message = PlayerGameweekPickMessageV2(
+                gameweek=gameweek,
+                player_picks=player_picks,
+            )
+            messages.append(message.build())
+        # sorted from smallest size to largest message size
+        messages = sorted(messages, key=self.__calculate_flex_message_size_bytes)
+        message_chunk_size = len(messages)
+
+        while len(messages) > 0:
+            messages_to_send = messages[:message_chunk_size]
+            message = CarouselMessage(messages=messages_to_send).build()
+            message_size = self.__calculate_flex_message_size_bytes(message)
+            if message_size > CAROUSEL_SIZE_LIMIT:
+                message_chunk_size = message_chunk_size - 1
+                continue
+            messages = messages[message_chunk_size:]
+            message_chunk_size = len(messages)
             self.bot.send_flex_message(
-                flex_message=message.build(),
+                flex_message=message,
                 alt_text=f"Player Gameweek {gameweek} Picks",
                 group_id=group_id,
             )

@@ -31,24 +31,27 @@ async def main():
     app = App()
     league_ids = app.firebase_repo.list_leagues_by_line_group_id(group_id=GROUP_ID)
     league_id = league_ids[0]
-    players = await app.fpl_service.get_or_update_fpl_gameweek_table(
-        gameweek,
-        league_id=league_id,
-        ignore_cache=True,
-    )
-
-    app.message_service.send_gameweek_result_message(
-        gameweek=gameweek,
-        players=players,
-        group_id=GROUP_ID,
-        event_status=None,
-    )
-
-    # player_revs = await app.fpl_service.list_players_revenues(league_id)
-
-    # player_picks = await app.fpl_service.list_player_gameweek_picks(
-    #     gameweek=gameweek, league_id=league_id
+    # players = await app.fpl_service.get_or_update_fpl_gameweek_table(
+    #     gameweek,
+    #     league_id=league_id,
+    #     ignore_cache=True,
     # )
+
+    # app.message_service.send_gameweek_result_message(
+    #     gameweek=gameweek,
+    #     players=players,
+    #     group_id=GROUP_ID,
+    #     event_status=None,
+    # )
+
+    player_picks = await app.fpl_service.list_player_gameweek_picks(
+        gameweek=gameweek, league_id=league_id
+    )
+    app.message_service.send_carousel_players_gameweek_picks(
+        gameweek=gameweek,
+        player_gameweek_picks=player_picks,
+        group_id=GROUP_ID,
+    )
 
 
 if __name__ == "__main__":

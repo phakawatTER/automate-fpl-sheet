@@ -86,7 +86,6 @@ class BootstrapElement:
     status: str
     team: int
     team_code: int
-    total_points: int
     transfers_in: int
     transfers_in_event: int
     transfers_out: int
@@ -146,6 +145,7 @@ class BootstrapElement:
     selected_rank_type: int
     starts_per_90: int
     clean_sheets_per_90: int
+    total_points: int
 
     # manually constructed fields
     position: Optional[PlayerPosition] = field(default=None)
@@ -153,6 +153,7 @@ class BootstrapElement:
     pick_position: Optional[int] = field(default=None)
     is_captain: Optional[bool] = field(default=None)
     is_vice_captain: Optional[bool] = field(default=None)
+    gameweek_points: Optional[int] = field(default=None)
 
     def __post_init__(self):
         positions = [
