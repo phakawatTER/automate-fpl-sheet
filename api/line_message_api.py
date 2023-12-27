@@ -1,5 +1,4 @@
 import re
-import asyncio
 from flask import Flask, request, abort
 from linebot import WebhookHandler
 from linebot.models import MessageEvent, TextMessage, SourceGroup
@@ -46,59 +45,46 @@ class LineMessageAPI:
             for pattern, action in PATTERN_ACTIONS.items():
                 match = re.fullmatch(pattern, text.lower())
                 if match:
-                    loop = asyncio.new_event_loop()
                     if action == MessageHandlerActionGroup.UPDATE_FPL_TABLE:
                         extracted_group = match.group(2)
                         gameweek = int(extracted_group)
-                        loop.run_until_complete(
-                            self.handler.handle_update_fpl_table(
-                                gameweek=gameweek, group_id=source.group_id
-                            )
+                        self.handler.handle_update_fpl_table(
+                            gameweek=gameweek, group_id=source.group_id
                         )
                     elif action == MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE:
                         extracted_group = match.group(2).split("-")
                         start_gw = int(extracted_group[0])
                         end_gw = int(extracted_group[1])
-                        loop.run_until_complete(
-                            self.handler.handle_batch_update_fpl_table(
-                                from_gameweek=start_gw,
-                                to_gameweek=end_gw,
-                                group_id=source.group_id,
-                            )
+                        self.handler.handle_batch_update_fpl_table(
+                            from_gameweek=start_gw,
+                            to_gameweek=end_gw,
+                            group_id=source.group_id,
                         )
 
                     elif action == MessageHandlerActionGroup.GET_PLAYERS_REVENUES:
                         extracted_group = match.group(1)
-                        loop.run_until_complete(
-                            self.handler.handle_get_revenues(group_id=source.group_id)
-                        )
+                        self.handler.handle_get_revenues(group_id=source.group_id)
                     elif action == MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT:
                         extracted_group = match.group(2).split("-")
                         start_gw = int(extracted_group[0])
                         end_gw = int(extracted_group[1])
-                        loop.run_until_complete(
-                            self.handler.handle_gameweek_plots(
-                                from_gameweek=start_gw,
-                                to_gameweek=end_gw,
-                                group_id=source.group_id,
-                            )
+                        self.handler.handle_gameweek_plots(
+                            from_gameweek=start_gw,
+                            to_gameweek=end_gw,
+                            group_id=source.group_id,
                         )
                     elif action == MessageHandlerActionGroup.GET_PLAYER_GW_PICKS:
                         extracted_group = match.group(2)
                         gameweek = int(extracted_group)
-                        loop.run_until_complete(
-                            self.handler.handle_players_gameweek_picks(
-                                gameweek=gameweek, group_id=source.group_id
-                            )
+                        self.handler.handle_players_gameweek_picks(
+                            gameweek=gameweek, group_id=source.group_id
                         )
                     elif action == MessageHandlerActionGroup.SUBSCRIBE_LEAGUE:
                         extracted_group = match.group(1)
                         league_id = int(extracted_group)
-                        loop.run_until_complete(
-                            self.handler.subscribe_league(
-                                group_id=source.group_id,
-                                league_id=league_id,
-                            )
+                        self.handler.subscribe_league(
+                            group_id=source.group_id,
+                            league_id=league_id,
                         )
                     elif action == MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE:
                         self.handler.unsubscribe_league(source.group_id)
@@ -110,7 +96,6 @@ class LineMessageAPI:
                         self.handler.handle_list_league_players(
                             group_id=source.group_id
                         )
-
                     elif action == MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT:
                         extracted_group = match.group(1)
                         player_index = int(match.group(1)) - 1
@@ -120,6 +105,8 @@ class LineMessageAPI:
                             bank_account=bank_account,
                             player_index=player_index,
                         )
+                    elif action == MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE:
+                        self.handler.handle_clear_gameweeks_cache(source.group_id)
 
                     break
 

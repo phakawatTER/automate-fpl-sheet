@@ -54,7 +54,7 @@ def run_in_error_wrapper(func=None, message_service: MessageService = None):
 
 
 def new_line_message_handler(app: App):
-    class _LineMessageAPIHandler:
+    class _handler:
         def __init__(self, app: App):
             self.__message_service = app.message_service
             self.__firebase_repo = app.firebase_repo
@@ -84,12 +84,7 @@ def new_line_message_handler(app: App):
                 group_id=group_id,
             )
             text = f"🎉 You have subscribed to league ID {league_id}"
-            if is_ok:
-                is_ok = self.__subscription_service.update_league_sheet(
-                    league_id=league_id,
-                    url="https://docs.google.com/spreadsheets/d/1eciOdiGItEkml98jVLyXysGMtpMa06hbiTTJ40lztw4/edit#gid=1315457538",
-                    worksheet_name="Sheet3",
-                )
+
             if not is_ok:
                 text = f"❌ Unable to subscribe to league ID {league_id}"
 
@@ -97,17 +92,6 @@ def new_line_message_handler(app: App):
                 text=text,
                 group_id=group_id,
             )
-
-        # NOTE: We support only 1 league per channel for now
-        def __get_group_league_id(self, group_id: str):
-            league_ids = self.__firebase_repo.list_leagues_by_line_group_id(group_id)
-            if league_ids is not None and len(league_ids) > 0:
-                return league_ids[0]
-            self.__message_service.send_text_message(
-                text="⚠️ No subscribed league found. Please subscribe to some league",
-                group_id=group_id,
-            )
-            abort(404)
 
         @run_in_error_wrapper(message_service=app.message_service)
         def handle_list_bot_commands(self, group_id: str):
@@ -248,6 +232,8 @@ def new_line_message_handler(app: App):
                 league_id
             )
             players = self.__firebase_repo.list_league_players(league_id=league_id)
+            if players is None:
+                abort(404)
             text = ""
             for i, p in enumerate(players):
                 first_name = p.name.split(" ")[0]
@@ -267,6 +253,9 @@ def new_line_message_handler(app: App):
         ):
             league_id = self.__get_group_league_id(group_id)
             players = self.__firebase_repo.list_league_players(league_id)
+            if players is None:
+                abort(404)
+
             player: Optional[models.PlayerData] = None
             for i, p in enumerate(players):
                 if i == player_index:
@@ -301,6 +290,17 @@ def new_line_message_handler(app: App):
                 group_id=group_id,
             )
 
+        @run_in_error_wrapper(message_service=app.message_service)
+        def handle_clear_gameweeks_cache(self, group_id: str):
+            league_id = self.__get_group_league_id(group_id)
+            current_gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
+            for i in range(current_gameweek):
+                self.__fpl_service.clear_gameweek_result_cache(i + 1, league_id)
+            self.__message_service.send_text_message(
+                text=f'⚠️ Successfully clear cache for league ID "{league_id}"',
+                group_id=group_id,
+            )
+
         def __validate_gameweek_range(self, start_gw: int, end_gw: int, group_id: str):
             # Validate if start_gw and end_gw are in the range (1, 38)
             if 1 <= start_gw <= 38 and 1 <= end_gw <= 38:
@@ -318,4 +318,15 @@ def new_line_message_handler(app: App):
                 )
                 abort(403)
 
-    return _LineMessageAPIHandler(app)
+        # NOTE: We support only 1 league per channel for now
+        def __get_group_league_id(self, group_id: str):
+            league_ids = self.__firebase_repo.list_leagues_by_line_group_id(group_id)
+            if league_ids is not None and len(league_ids) > 0:
+                return league_ids[0]
+            self.__message_service.send_text_message(
+                text="⚠️ No subscribed league found. Please subscribe to some league",
+                group_id=group_id,
+            )
+            abort(404)
+
+    return _handler(app)

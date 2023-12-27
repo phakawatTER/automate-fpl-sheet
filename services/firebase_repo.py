@@ -72,8 +72,10 @@ class FirebaseRepo:
         data = self.__db.get_data(f"{_Schema.LINE_CHANNELS}/{group_id}")
         return data
 
-    def list_league_players(self, league_id: int):
+    def list_league_players(self, league_id: int) -> Optional[List[models.PlayerData]]:
         data = self.__db.get_data(f"{_Schema.LEAGUE_PLAYERS}/{league_id}")
+        if data is None:
+            return None
         return [models.PlayerData(**d) for d in data]
 
     def get_league_google_sheet(self, league_id: int) -> models.LeagueSheet:

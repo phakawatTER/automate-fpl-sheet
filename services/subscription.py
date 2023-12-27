@@ -23,10 +23,14 @@ class Service:
                 )
                 players.append(e)
 
-            self.__firebase_repo.put_league_players(
-                league_id=league_id,
-                players=players,
+            existing_players = self.__firebase_repo.list_league_players(
+                league_id=league_id
             )
+            if existing_players is None or len(existing_players) != len(entries):
+                self.__firebase_repo.put_league_players(
+                    league_id=league_id,
+                    players=players,
+                )
 
             self.__firebase_repo.subscribe_league(
                 league_id=league_id,

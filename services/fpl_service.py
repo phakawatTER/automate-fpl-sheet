@@ -24,6 +24,10 @@ from .firebase_repo import FirebaseRepo
 CACHE_TABLE_NAME = "FPLCacheTable"
 
 
+def _construct_cache_hash(league_id, gameweek):
+    return f"{league_id}-gameweek-{gameweek}"
+
+
 class Service:
     def __init__(
         self,
@@ -86,6 +90,9 @@ class Service:
         ignored_players = self.firebase_repo.list_league_ignored_players(league_id)
         ignored_players.append(None)
         league_players = self.firebase_repo.list_league_players(league_id)
+        if league_players is None:
+            raise Exception(f"league players for {league_id} not found")
+
         for result in results:
             # player 1
             p1_name = result.entry_1_name
@@ -174,7 +181,7 @@ class Service:
 
         player_cache_items = [player.to_json() for player in players]
         self.__put_cache_item(
-            key=f"{league_id}-gameweek-{gameweek}", item=player_cache_items
+            key=_construct_cache_hash(league_id, gameweek), item=player_cache_items
         )
 
         return players
@@ -276,7 +283,7 @@ class Service:
         league_id: int,
     ) -> Optional[List[PlayerGameweekData]]:
         response = self.dynamodb.get_item_by_hash_key(
-            key=f"{league_id}-gameweek-{gameweek}"
+            key=_construct_cache_hash(league_id, gameweek)
         )
         item = response.get("Item")
         if item is None:
@@ -308,6 +315,8 @@ class Service:
     async def __list_fantasy_teams(self, gameweek: int, league_id: int):
         ignore_player_ids = self.firebase_repo.list_league_ignored_players(league_id)
         players_data = self.firebase_repo.list_league_players(league_id)
+        if players_data is None:
+            raise Exception(f"league players for {league_id} not found")
         players_data = [p for p in players_data if p.player_id not in ignore_player_ids]
 
         player_picks_dict = {}
@@ -366,3 +375,8 @@ class Service:
             )
 
         return players_gameweek_picks
+
+    def clear_gameweek_result_cache(self, gameweek: int, league_id: str):
+        return self.dynamodb.delete_item_by_hash_key(
+            _construct_cache_hash(league_id, gameweek)
+        )

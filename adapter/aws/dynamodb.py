@@ -20,3 +20,10 @@ class DynamoDB:
             Item={"KEY": {"S": key}, "DATA": {"S": json.dumps(data)}},
         )
         return item
+
+    def delete_item_by_hash_key(self, key: str):
+        response = self.dynamodb.delete_item(
+            TableName=self.table_name,
+            Key={"KEY": {"S": key}},
+        )
+        return response

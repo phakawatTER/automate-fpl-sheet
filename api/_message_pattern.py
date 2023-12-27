@@ -13,6 +13,7 @@ class MessageHandlerActionGroup:
     UPDATE_LEAGUE_REWARD = "UPDATE_LEAGUE_REWARD"
     LIST_LEAGUE_PLAYERS = "LIST_LEAGUE_PLAYERS"
     UPDATE_PLAYER_BANK_ACCOUNT = "UPDATE_PLAYER_BANK_ACCOUNT"
+    CLEAR_ALL_GAMEWEEKS_CACHE = "CLEAR_ALL_GAMEWEEKS_CACHE"
 
     @staticmethod
     def get_commands():
@@ -26,6 +27,8 @@ class MessageHandlerActionGroup:
             MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE: "Unsubscribe league by league id",
             MessageHandlerActionGroup.UPDATE_LEAGUE_REWARD: "Update league reward with comma-separated numeric values",
             MessageHandlerActionGroup.LIST_LEAGUE_PLAYERS: "List subscribed league players",
+            MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT: "Update player's bank account",
+            MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE: "Clear all gameweeks cache",
         }
 
 
@@ -42,4 +45,6 @@ PATTERN_ACTIONS = {
     r"update league reward": MessageHandlerActionGroup.UPDATE_LEAGUE_REWARD,
     r"list league players": MessageHandlerActionGroup.LIST_LEAGUE_PLAYERS,
     r"update player (\d+) (bank account|ba) (.+$)": MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT,
+    # cache
+    r"clear gw cache": MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE,
 }

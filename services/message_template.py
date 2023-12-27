@@ -178,7 +178,7 @@ class GameweekResultMessage(_CommonHero):
             },
         )
 
-        if self.event_status is not None:
+        if self.event_status is not None and self.event_status.leagues != "":
             message["body"]["contents"].append(
                 {
                     "type": "box",
@@ -775,7 +775,7 @@ class BotInstructionMessage(_CommonHero):
         message.append(
             {
                 "type": "text",
-                "text": "🚀Luka Bot CMD Instructions",
+                "text": "🚀Bot Luka CMD Instructions",
                 "size": "xl",
                 "color": Color.TOPIC,
                 "weight": "bold",
@@ -788,7 +788,7 @@ class BotInstructionMessage(_CommonHero):
                 "margin": "md",
                 "wrap": True,
                 "text": info,
-                "color": Color.NORMAL,
+                "color": Color.TOPIC,
             }
         )
         message.append(
@@ -802,11 +802,12 @@ class BotInstructionMessage(_CommonHero):
             m = {
                 "type": "box",
                 "layout": "vertical",
-                "margin": "md",
+                "margin": "xl",
                 "contents": [
                     {
                         "type": "text",
                         "text": f"{desc}:",
+                        "wrap": True,
                         "weight": "bold",
                         "flex": 0,
                         "color": Color.TOPIC,
@@ -816,7 +817,7 @@ class BotInstructionMessage(_CommonHero):
                         "wrap": True,
                         "text": " " + pattern,
                         "flex": 0,
-                        "color": Color.NORMAL,
+                        "color": Color.SUCCESS,
                     },
                 ],
             }
