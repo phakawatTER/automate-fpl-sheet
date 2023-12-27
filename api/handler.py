@@ -301,6 +301,106 @@ def new_line_message_handler(app: App):
                 group_id=group_id,
             )
 
+        def handle_remove_ignored_player(self, group_id: str, player_index):
+            league_id = self.__get_group_league_id(group_id)
+            players = self.__firebase_repo.list_league_players(league_id=league_id)
+            if player_index < 0 or player_index > len(players) - 1:
+                self.__message_service.send_flex_message(
+                    text="❌ Invalid player index", group_id=group_id
+                )
+                return
+            player: Optional[models.PlayerData] = None
+            for i, p in enumerate(players):
+                if i == player_index:
+                    player = p
+                    break
+
+            ignored_player_ids = self.__firebase_repo.list_league_ignored_players(
+                league_id=league_id
+            )
+            if player.player_id not in ignored_player_ids:
+                self.__message_service.send_text_message(
+                    text=f'😅 This player "{player.player_id}" is not in ignored players lis',
+                    group_id=group_id,
+                )
+                return
+            ignored_player_ids.append(player.player_id)
+            ignored_player_ids = [
+                player_id
+                for player_id in ignored_player_ids
+                if player_id != player.player_id
+            ]
+            self.__firebase_repo.put_league_ignored_players(
+                league_id=league_id, ignored_player_ids=ignored_player_ids
+            )
+            self.__message_service.send_text_message(
+                text=f'🎉 Sucessfully remove ignored player "{player.player_id}" from list',
+                group_id=group_id,
+            )
+            self.handle_clear_gameweeks_cache(group_id)
+            self.handle_list_league_players(group_id)
+
+        def handle_add_ignored_player(self, group_id: str, player_index: int):
+            league_id = self.__get_group_league_id(group_id)
+            players = self.__firebase_repo.list_league_players(league_id=league_id)
+            if player_index < 0 or player_index > len(players) - 1:
+                self.__message_service.send_flex_message(
+                    text="❌ Invalid player index", group_id=group_id
+                )
+                return
+            player: Optional[models.PlayerData] = None
+            for i, p in enumerate(players):
+                if i == player_index:
+                    player = p
+                    break
+
+            ignored_player_ids = self.__firebase_repo.list_league_ignored_players(
+                league_id=league_id
+            )
+            if player.player_id in ignored_player_ids:
+                self.__message_service.send_text_message(
+                    text=f'😅 This player "{player.player_id}" is already ignored',
+                    group_id=group_id,
+                )
+                return
+            ignored_player_ids.append(player.player_id)
+            self.__firebase_repo.put_league_ignored_players(
+                league_id=league_id, ignored_player_ids=ignored_player_ids
+            )
+            self.__message_service.send_text_message(
+                text=f"🎉 Sucessfully ignoring player {player.player_id}",
+                group_id=group_id,
+            )
+            self.handle_clear_gameweeks_cache(group_id)
+            self.handle_list_league_players(group_id)
+
+        def handle_update_league_rewards(self, group_id: str, rewards: List[float]):
+            league_id = self.__get_group_league_id(group_id)
+            ignored_player_ids = self.__firebase_repo.list_league_ignored_players(
+                league_id
+            )
+            players = self.__firebase_repo.list_league_players(league_id)
+            players = [
+                player
+                for player in players
+                if player.player_id not in ignored_player_ids
+            ]
+
+            if len(players) != len(rewards):
+                self.__message_service.send_text_message(
+                    text="❌ length of rewards does not match number of active players in league",
+                    group_id=group_id,
+                )
+                return
+            self.__firebase_repo.put_league_rewards(
+                league_id=league_id, rewards=rewards
+            )
+            self.__message_service.send_text_message(
+                text="🎉 You have successfully update league rewards.",
+                group_id=group_id,
+            )
+            self.handle_clear_gameweeks_cache(group_id)
+
         def __validate_gameweek_range(self, start_gw: int, end_gw: int, group_id: str):
             # Validate if start_gw and end_gw are in the range (1, 38)
             if 1 <= start_gw <= 38 and 1 <= end_gw <= 38:

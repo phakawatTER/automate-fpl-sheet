@@ -43,6 +43,11 @@ class FirebaseRepo:
         data = self.__db.get_data(f"{_Schema.LEAGUE_GAMEWEEK_REWARDS}/{league_id}")
         return data
 
+    def put_league_rewards(self, league_id: int, rewards: List[float]):
+        return self.__db.put_data(
+            f"{_Schema.LEAGUE_GAMEWEEK_REWARDS}/{league_id}", rewards
+        )
+
     def put_league_players(self, league_id: int, players: List[models.PlayerData]):
         return self.__db.put_data(
             f"{_Schema.LEAGUE_PLAYERS}/{league_id}",
@@ -85,3 +90,9 @@ class FirebaseRepo:
     def list_league_ignored_players(self, league_id: int) -> List[int]:
         data = self.__db.get_data(f"{_Schema.LEAGUE_IGNORED_PLAYERS}/{league_id}")
         return data if data is not None else []
+
+    def put_league_ignored_players(self, league_id, ignored_player_ids: List[int]):
+        return self.__db.put_data(
+            f"{_Schema.LEAGUE_IGNORED_PLAYERS}/{league_id}",
+            ignored_player_ids,
+        )

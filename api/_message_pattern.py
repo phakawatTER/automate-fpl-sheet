@@ -14,6 +14,10 @@ class MessageHandlerActionGroup:
     LIST_LEAGUE_PLAYERS = "LIST_LEAGUE_PLAYERS"
     UPDATE_PLAYER_BANK_ACCOUNT = "UPDATE_PLAYER_BANK_ACCOUNT"
     CLEAR_ALL_GAMEWEEKS_CACHE = "CLEAR_ALL_GAMEWEEKS_CACHE"
+    # Rewards
+    ADD_IGNORED_LEAGUE_PLAYER = "ADD_IGNORED_LEAGUE_PLAYER"
+    REMOVE_IGNORED_LEAGUE_PLAYER = "REMOVE_IGNORED_LEAGUE_PLAYER"
+    UPDATE_LEAGUE_REWARDS = "UPDATE_LEAGUE_REWARDS"
 
     @staticmethod
     def get_commands():
@@ -29,6 +33,9 @@ class MessageHandlerActionGroup:
             MessageHandlerActionGroup.LIST_LEAGUE_PLAYERS: "List subscribed league players",
             MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT: "Update player's bank account",
             MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE: "Clear all gameweeks cache",
+            MessageHandlerActionGroup.ADD_IGNORED_LEAGUE_PLAYER: "Add league ignored player",
+            MessageHandlerActionGroup.REMOVE_IGNORED_LEAGUE_PLAYER: "Remove league ignored player",
+            MessageHandlerActionGroup.UPDATE_LEAGUE_REWARDS: "Update league rewards (should match the number of active players)",
         }
 
 
@@ -47,4 +54,8 @@ PATTERN_ACTIONS = {
     r"update player (\d+) (bank account|ba) (.+$)": MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT,
     # cache
     r"clear gw cache": MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE,
+    # rewards
+    r"^ignore player (\d+)": MessageHandlerActionGroup.ADD_IGNORED_LEAGUE_PLAYER,
+    r"^unignore player (\d+)": MessageHandlerActionGroup.REMOVE_IGNORED_LEAGUE_PLAYER,
+    r"^update league rewards (-?\d+(?:,-?\d+)*)$": MessageHandlerActionGroup.UPDATE_LEAGUE_REWARDS,
 }
