@@ -2,7 +2,7 @@ from boto3.session import Session
 import services
 import util
 from config import Config
-from adapter import S3Downloader, FPLAdapter, S3Uploader, StateMachine
+from adapter import S3Downloader, FPLAdapter, S3Uploader, StateMachine, SSM
 from database import FirebaseRealtimeDatabase
 from line import LineBot
 
@@ -13,19 +13,19 @@ BUCKET = "ds-fpl"
 class App:
     def __init__(self):
         sess = Session()
+        ssm = SSM(session=sess)
+
         self.s3_downloader = S3Downloader(
             session=sess,
             bucket=BUCKET,
             download_dir="/tmp",
         )
         self.s3_uploader = S3Uploader(session=sess, bucket=BUCKET)
-        config_path = self.s3_downloader.download_file_from_default_bucket(
-            "config.json"
-        )
         service_account_cred_path = (
             self.s3_downloader.download_file_from_default_bucket("service_account.json")
         )
-        self.config = Config(path_to_config=config_path)
+        self.config = Config.load_from_ssm(ssm)
+
         self.linebot = LineBot(config=self.config)
         self.message_service = services.MessageService(bot=self.linebot)
 

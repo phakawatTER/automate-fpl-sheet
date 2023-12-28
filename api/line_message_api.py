@@ -42,7 +42,6 @@ class LineMessageAPI:
             source: SourceGroup = event.source
             message: TextMessage = event.message
             text: str = message.text
-
             for pattern, action in PATTERN_ACTIONS.items():
                 match = re.fullmatch(pattern, text.lower())
                 if match:
@@ -140,6 +139,23 @@ class LineMessageAPI:
                             group_id=source.group_id, player_index=player_index
                         )
 
-                    break
+                    elif action == MessageHandlerActionGroup.GET_GAMEWEEK_FIXTURES:
+                        gameweek = int(match.group(2))
+                        loop.run_until_complete(
+                            self.handler.handle_list_gameweek_fixtures(
+                                group_id=source.group_id,
+                                gameweek=gameweek,
+                            )
+                        )
+                    elif action == MessageHandlerActionGroup.LIST_GAMEWEEK_FIXTURES:
+                        gameweek_range = match.group(2).split("-")
+                        start_gw, stop_gw = gameweek_range
+                        loop.run_until_complete(
+                            self.handler.handle_list_gameweek_fixtures_by_range(
+                                group_id=source.group_id,
+                                start_gameweek=int(start_gw),
+                                stop_gameweek=int(stop_gw),
+                            )
+                        )
 
         return self.__app

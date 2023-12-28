@@ -381,3 +381,7 @@ class Service:
         return self.dynamodb.delete_item_by_hash_key(
             _construct_cache_hash(league_id, gameweek)
         )
+
+    async def list_league_teams(self):
+        bootstrap = await self.fpl_adapter.get_bootstrap()
+        return bootstrap.teams

@@ -36,6 +36,10 @@ class FPLAdapter:
             return response
 
     @staticmethod
+    def get_team_badge_image_url(team_code: str):
+        return f"https://resources.premierleague.com/premierleague/badges/70/t{team_code}.png"
+
+    @staticmethod
     def get_element_image_url(element_code: str, width: int = 110, height: int = 140):
         return f"https://resources.premierleague.com/premierleague/photos/players/{width}x{height}/p{element_code}.png"
 
@@ -51,6 +55,7 @@ class FPLAdapter:
         bootstrap = models.Bootstrap(
             events=[models.BootstrapGameweek(**d) for d in data.get("events")],
             elements=[models.BootstrapElement(**d) for d in data.get("elements")],
+            teams=[models.BootstrapTeam(**d) for d in data.get("teams")],
         )
         return bootstrap
 
