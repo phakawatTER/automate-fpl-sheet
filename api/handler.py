@@ -1,7 +1,6 @@
 import functools
 import asyncio
 import json
-from datetime import timedelta
 from typing import List, Optional
 from flask import abort
 from boto3.session import Session

@@ -1,5 +1,4 @@
 import json
-import math
 from typing import List, Optional
 from line import LineBot
 import models
