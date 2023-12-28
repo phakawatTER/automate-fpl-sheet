@@ -1,5 +1,4 @@
 import json
-import math
 from typing import List, Optional
 from line import LineBot
 import models
@@ -10,6 +9,7 @@ from .message_template import (
     CarouselMessage,
     PlayerGameweekPickMessageV2,
     BotInstructionMessage,
+    GameweekFixtures,
 )
 
 STEP_SIZE = 4
@@ -96,46 +96,33 @@ class MessageService:
         gameweeks: List[int],
         group_id: str,
     ):
-        step_size = 8
-        for i in range(0, len(gameweek_players), step_size):
-            j = i + step_size
-            if j > len(gameweek_players):
-                j = len(gameweek_players)
-            data = zip(
-                gameweek_players[i:j],
-                event_statuses[i:j],
-                gameweeks[i:j],
-            )
-            messages = []
-            for players, event_status, gameweek in data:
-                m = GameweekResultMessage(
-                    players=players,
-                    event_status=event_status,
-                    gameweek=gameweek,
-                )
-                messages.append(m.build())
-
-            message = CarouselMessage(messages=messages).build()
-            self.bot.send_flex_message(
-                flex_message=message, alt_text="Gameweek Results", group_id=group_id
-            )
-
-    def send_carousel_players_gameweek_picks(
-        self,
-        gameweek: int,
-        player_gameweek_picks: List[models.PlayerGameweekPicksData],
-        group_id: str,
-    ):
-        temp_player_gameweek_picks = [*player_gameweek_picks]
         messages = []
-        for player_picks in temp_player_gameweek_picks:
-            message = PlayerGameweekPickMessageV2(
+        for players, event_status, gameweek in zip(
+            gameweek_players, event_statuses, gameweeks
+        ):
+            m = GameweekResultMessage(
+                players=players,
+                event_status=event_status,
                 gameweek=gameweek,
-                player_picks=player_picks,
             )
-            messages.append(message.build())
+            messages.append(m.build())
+        self.__send_carousel_message(
+            group_id=group_id,
+            messages=messages,
+            alt_text=f"Gameweek {gameweeks[0]} to {gameweeks[-1]} Result",
+            sort_by_message_size=False,
+        )
+
+    def __send_carousel_message(
+        self,
+        group_id: str,
+        messages: List[dict],
+        alt_text: str = "",
+        sort_by_message_size: bool = True,
+    ):
         # sorted from smallest size to largest message size
-        messages = sorted(messages, key=self.__calculate_flex_message_size_bytes)
+        if sort_by_message_size:
+            messages = sorted(messages, key=self.__calculate_flex_message_size_bytes)
         message_chunk_size = len(messages)
 
         while len(messages) > 0:
@@ -149,16 +136,80 @@ class MessageService:
             message_chunk_size = len(messages)
             self.bot.send_flex_message(
                 flex_message=message,
-                alt_text=f"Player Gameweek {gameweek} Picks",
+                alt_text=alt_text,
                 group_id=group_id,
             )
+
+    def send_carousel_players_gameweek_picks(
+        self,
+        gameweek: int,
+        player_gameweek_picks: List[models.PlayerGameweekPicksData],
+        group_id: str,
+    ):
+        temp_player_gameweek_picks = [*player_gameweek_picks]
+        messages = [
+            PlayerGameweekPickMessageV2(
+                gameweek=gameweek,
+                player_picks=p,
+            ).build()
+            for p in temp_player_gameweek_picks
+        ]
+        self.__send_carousel_message(
+            group_id=group_id, messages=messages, alt_text=f"Gameweek {gameweek} Picks"
+        )
 
     def send_bot_instruction_message(
         self,
         group_id: str,
         commands_map_list: List[tuple[str]],
     ):
-        message = BotInstructionMessage(commands_map_list=commands_map_list).build()
+        messages = []
+        page_count = 1
+        page_command_size = 8
+        for i in range(0, len(commands_map_list), page_command_size):
+            j = i + page_command_size
+            if j > len(commands_map_list):
+                j = len(commands_map_list) - 1
+            message = BotInstructionMessage(
+                commands_map_list=commands_map_list[i:j],
+                page=page_count,
+            ).build()
+            messages.append(message)
+            page_count += 1
+
+        self.__send_carousel_message(
+            group_id=group_id,
+            messages=messages,
+            alt_text="Luka Bot instructions",
+            sort_by_message_size=False,
+        )
+
+    def send_gameweek_fixtures_message(
+        self, group_id: str, gameweek: int, fixtures: List[models.FPLMatchFixture]
+    ):
+        message = GameweekFixtures(
+            gameweek=gameweek,
+            fixtures=fixtures,
+        ).build()
         self.bot.send_flex_message(
-            group_id=group_id, flex_message=message, alt_text="Luka Bot instructions"
+            flex_message=message,
+            alt_text=f"Gameweek{gameweek} Fixtures",
+            group_id=group_id,
+        )
+
+    def send_carousel_gameweek_fixtures_message(
+        self,
+        group_id: str,
+        fixtures_list: List[List[models.FPLMatchFixture]],
+        gameweeks: List[int],
+    ):
+        messages = []
+        for fixtures, gameweek in zip(fixtures_list, gameweeks):
+            message = GameweekFixtures(gameweek=gameweek, fixtures=fixtures)
+            messages.append(message.build())
+        self.__send_carousel_message(
+            group_id=group_id,
+            messages=messages,
+            alt_text=f"Gameweek {gameweeks[0]} to {gameweeks[1]} Fixtures",
+            sort_by_message_size=False,
         )

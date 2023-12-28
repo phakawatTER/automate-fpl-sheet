@@ -15,17 +15,24 @@ async def execute(gameweek: int):
     global _APP
     if _APP is None:
         _APP = App()
-    group_ids = _APP.firebase_repo.list_line_channels()
+    app = _APP
+    group_ids = app.firebase_repo.list_line_channels()
+    fixtures = await app.fpl_service.list_gameweek_fixtures(gameweek)
     for group_id in group_ids:
-        league_id = _APP.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
-        player_gameweek_picks = await _APP.fpl_service.list_player_gameweek_picks(
+        league_id = app.firebase_repo.list_leagues_by_line_group_id(group_id)[0]
+        player_gameweek_picks = await app.fpl_service.list_player_gameweek_picks(
             gameweek=gameweek,
             league_id=league_id,
         )
-        _APP.message_service.send_carousel_players_gameweek_picks(
+        app.message_service.send_carousel_players_gameweek_picks(
             gameweek=gameweek,
             player_gameweek_picks=player_gameweek_picks,
             group_id=group_id,
+        )
+        app.message_service.send_gameweek_fixtures_message(
+            group_id=group_id,
+            fixtures=fixtures,
+            gameweek=gameweek,
         )
 
 

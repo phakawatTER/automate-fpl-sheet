@@ -1,4 +1,5 @@
 import math
+from datetime import datetime, timedelta
 from typing import List, Optional, Dict
 from models import (
     PlayerGameweekData,
@@ -7,6 +8,8 @@ from models import (
     PlayerGameweekPicksData,
     PlayerPosition,
     BootstrapElement,
+    FPLMatchFixture,
+    BootstrapTeam,
 )
 from adapter import FPLAdapter
 
@@ -46,6 +49,7 @@ BACKGROUND_COLOR = "#37003C"
 FPL_TEXT_COLOR = "#37003C"
 FPL_PRIMARY_COLOR = "#00FF87"
 FPL_SECONDARY_COLOR = "#02EFFF"
+FPL_TERTIARY_COLOR = "#FF2882"
 
 EMOJI_NUMBER_MAP = {
     "0": "0️⃣",
@@ -90,7 +94,7 @@ COMMON_FOOTER = {
 }
 
 
-class _CommonHero:
+class _CommonMessageTemplate:
     def __init__(self):
         self.container = {
             "type": "bubble",
@@ -115,7 +119,7 @@ class _CommonHero:
         return self.container
 
 
-class GameweekReminderMessage(_CommonHero):
+class GameweekReminderMessage(_CommonMessageTemplate):
     def __init__(self, gameweek: int):
         super().__init__()
         self.gameweek = gameweek
@@ -156,7 +160,7 @@ class CarouselMessage:
         return message
 
 
-class GameweekResultMessage(_CommonHero):
+class GameweekResultMessage(_CommonMessageTemplate):
     def __init__(
         self,
         players: List[PlayerGameweekData],
@@ -217,7 +221,7 @@ class GameweekResultMessage(_CommonHero):
             for numb in rank_str:
                 rank += EMOJI_NUMBER_MAP[numb]
             player_name = f"{rank} {player.team_name}"
-            is_top_3 = i <= 2 and player.reward > 0
+            is_top_3 = i <= 2
             if is_top_3:
                 player_name += f" {top3_icons[i]}"
             else:
@@ -310,7 +314,7 @@ class GameweekResultMessage(_CommonHero):
         return message
 
 
-class RevenueMessage(_CommonHero):
+class RevenueMessage(_CommonMessageTemplate):
     def __init__(self, players_revenues: List[PlayerRevenue]):
         super().__init__()
         self.players_revenues = players_revenues
@@ -793,38 +797,40 @@ class PlayerGameweekPickMessageV2:
         return content
 
 
-class BotInstructionMessage(_CommonHero):
-    def __init__(self, commands_map_list: List[tuple[str]]):
+class BotInstructionMessage(_CommonMessageTemplate):
+    def __init__(self, commands_map_list: List[tuple[str]], page: int = 1):
         super().__init__()
         self.commands_map_list = commands_map_list
+        self.page = page
 
     def build(self):
         message = self.container["body"]["contents"]
-        message.append(
-            {
-                "type": "text",
-                "text": "🚀Bot Luka CMD Instructions",
-                "size": "xl",
-                "color": Color.TOPIC,
-                "weight": "bold",
-            }
-        )
-        info = "These are the available command patterns where '(d+)' represents a positive integer. Please note that the specified integer(s) must be within the range of possible gameweeks, which is from 1 to 38."
-        message.append(
-            {
-                "type": "text",
-                "margin": "md",
-                "wrap": True,
-                "text": info,
-                "color": Color.TOPIC,
-            }
-        )
-        message.append(
-            {
-                "type": "separator",
-                "margin": "xl",
-            }
-        )
+        if self.page == 1:
+            message.append(
+                {
+                    "type": "text",
+                    "text": "🚀Bot Luka CMD Instructions",
+                    "size": "xl",
+                    "color": Color.TOPIC,
+                    "weight": "bold",
+                }
+            )
+            info = "These are the available command patterns where '(d+)' represents a positive integer. Please note that the specified integer(s) must be within the range of possible gameweeks, which is from 1 to 38."
+            message.append(
+                {
+                    "type": "text",
+                    "margin": "md",
+                    "wrap": True,
+                    "text": info,
+                    "color": Color.TOPIC,
+                }
+            )
+            message.append(
+                {
+                    "type": "separator",
+                    "margin": "xl",
+                }
+            )
 
         for desc, pattern in self.commands_map_list:
             m = {
@@ -843,7 +849,7 @@ class BotInstructionMessage(_CommonHero):
                     {
                         "type": "text",
                         "wrap": True,
-                        "text": " " + pattern,
+                        "text": "🤖 " + pattern,
                         "flex": 0,
                         "color": Color.SUCCESS,
                     },
@@ -852,3 +858,167 @@ class BotInstructionMessage(_CommonHero):
             message.append(m)
 
         return self.container
+
+
+class GameweekFixtures(_CommonMessageTemplate):
+    def __init__(self, gameweek: int, fixtures: List[FPLMatchFixture]):
+        super().__init__()
+        self.gameweek = gameweek
+        self.fixtures = fixtures
+
+    def build(self):
+        container = self._get_container()
+        body_contents = container["body"]["contents"]
+        body_contents.append(
+            {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": f"Gameweek {self.gameweek}",
+                        "weight": "bold",
+                        "color": Color.TOPIC,
+                        "size": "xxl",
+                    }
+                ],
+            }
+        )
+        group: Dict[str, List[FPLMatchFixture]] = {}
+
+        for fixture in self.fixtures:
+            kickoff_time = fixture.kickoff_time + timedelta(hours=7)
+            key = kickoff_time.strftime("%Y-%m-%d")
+            if key not in group:
+                group[key] = []
+            group[key].append(fixture)
+
+        for _, fixtures in group.items():
+            body_contents.append(self.__build_date_box(fixtures[0].kickoff_time))
+            for fixture in fixtures:
+                body_contents.append(self.__build_fixture_box(fixture))
+
+        return self.container
+
+    def __build_date_box(self, dt: datetime):
+        kickoff_date = (dt + timedelta(hours=7)).strftime("%A %d %B %Y")
+        return {
+            "type": "box",
+            "layout": "vertical",
+            "cornerRadius": "xl",
+            "justifyContent": "flex-end",
+            "height": "30px",
+            "flex": 0,
+            "contents": [
+                {
+                    "type": "box",
+                    "layout": "vertical",
+                    "justifyContent": "center",
+                    "background": {
+                        "type": "linearGradient",
+                        "angle": "90deg",
+                        "startColor": FPL_PRIMARY_COLOR,
+                        "endColor": FPL_SECONDARY_COLOR,
+                    },
+                    "contents": [
+                        {
+                            "type": "text",
+                            "color": FPL_TEXT_COLOR,
+                            "align": "center",
+                            "text": kickoff_date,
+                        },
+                    ],
+                }
+            ],
+        }
+
+    def __build_fixture_box(self, fixture: FPLMatchFixture):
+        return {
+            "type": "box",
+            "layout": "horizontal",
+            "justifyContent": "center",
+            "margin": "xl",
+            "contents": [
+                self.__build_team_box(team=fixture.team_h_data, is_team_a=False),
+                self.__build_score_box(fixture=fixture),
+                self.__build_team_box(team=fixture.team_a_data, is_team_a=True),
+            ],
+        }
+
+    def __build_score_box(self, fixture: FPLMatchFixture):
+        is_played = fixture.minutes > 0
+        return {
+            "type": "box",
+            "cornerRadius": "sm",
+            "flex": 0,
+            "backgroundColor": FPL_TERTIARY_COLOR if is_played else Color.TOPIC,
+            "layout": "horizontal",
+            "alignItems": "center",
+            "width": "60px",
+            "justifyContent": "space-around",
+            "margin": "md",
+            "contents": [
+                {
+                    "type": "text",
+                    "flex": 0,
+                    "weight": "bold",
+                    "size": "md",
+                    "text": f"{fixture.team_h_score}",
+                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                },
+                {
+                    "type": "text",
+                    "flex": 0,
+                    "size": "md",
+                    "text": "|",
+                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                },
+                {
+                    "type": "text",
+                    "flex": 0,
+                    "weight": "bold",
+                    "size": "md",
+                    "text": f"{fixture.team_a_score}",
+                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                },
+            ]
+            if is_played
+            else [
+                {
+                    "type": "text",
+                    "flex": 0,
+                    "size": "xs",
+                    "text": fixture.kickoff_time.strftime("%H:%M"),
+                },
+            ],
+        }
+
+    def __build_team_box(self, team: BootstrapTeam, is_team_a: bool = False):
+        badge_url = FPLAdapter.get_team_badge_image_url(team.code)
+        contents = [
+            {
+                "type": "text",
+                "flex": 0,
+                "text": team.name,
+                "color": Color.TOPIC,
+                "size": "sm",
+                "margin": "sm",
+            },
+            {
+                "type": "image",
+                "flex": 0,
+                "url": badge_url,
+                "size": "35px",
+                "gravity": "center",
+                "margin": "sm",
+            },
+        ]
+        if is_team_a:
+            contents.reverse()
+        return {
+            "type": "box",
+            "layout": "horizontal",
+            "alignItems": "center",
+            "justifyContent": "flex-end" if not is_team_a else "flex-start",
+            "contents": contents,
+        }

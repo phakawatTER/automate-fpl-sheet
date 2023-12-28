@@ -4,6 +4,8 @@ import random
 import functools
 from loguru import logger
 
+RFC3339_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+
 
 def time_track(func=None, description: str = ""):
     def decorator(func):
@@ -78,4 +80,5 @@ __all__ = [
     "add_noise",
     "is_equal_float",
     "convert_to_a1_notation",
+    "RFC3339_FORMAT",
 ]

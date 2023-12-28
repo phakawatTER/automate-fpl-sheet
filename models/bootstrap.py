@@ -166,6 +166,32 @@ class BootstrapElement:
 
 
 @dataclass
+class BootstrapTeam:
+    code: int
+    draw: int
+    form: Optional[any]
+    id: int
+    loss: int
+    name: str
+    played: int
+    points: int
+    position: int
+    short_name: str
+    strength: int
+    team_division: Optional[int]
+    unavailable: bool
+    win: int
+    strength_overall_home: int
+    strength_overall_away: int
+    strength_attack_home: int
+    strength_attack_away: int
+    strength_defence_home: int
+    strength_defence_away: int
+    pulse_id: int
+
+
+@dataclass
 class Bootstrap:
     events: List[BootstrapGameweek]
     elements: List[BootstrapElement]
+    teams: List[BootstrapTeam]

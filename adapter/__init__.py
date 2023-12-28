@@ -1,5 +1,5 @@
 from .fpl_adapter import FPLAdapter, FPLError
-from .aws import S3Downloader, DynamoDB, S3Uploader, StateMachine
+from .aws import S3Downloader, DynamoDB, S3Uploader, StateMachine, SSM
 
 __all__ = [
     "FPLAdapter",
@@ -8,4 +8,5 @@ __all__ = [
     "DynamoDB",
     "S3Uploader",
     "StateMachine",
+    "SSM",
 ]

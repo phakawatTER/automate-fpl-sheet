@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Union
 from datetime import datetime, timezone, date
+from .bootstrap import BootstrapTeam
+import util
 
 
 @dataclass
@@ -214,11 +216,14 @@ class FPLMatchFixture:
     team_a_difficulty: int
     pulse_id: int
 
+    team_a_data: Optional[BootstrapTeam] = field(default=None)
+    team_h_data: Optional[BootstrapTeam] = field(default=None)
+
     def __post_init__(self):
         self.kickoff_time = (
             self.kickoff_time
             if isinstance(self.kickoff_time, datetime)
-            else datetime.strptime(self.kickoff_time, "%Y-%m-%dT%H:%M:%SZ").replace(
+            else datetime.strptime(self.kickoff_time, util.RFC3339_FORMAT).replace(
                 tzinfo=timezone.utc
             )
         )
