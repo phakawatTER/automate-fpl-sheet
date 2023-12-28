@@ -24,7 +24,6 @@ class Config(object):
         config = {}
         for key, value in ConfigParameter.__dict__.items():
             if not key.startswith("__") and not callable(value):
-                print(value)
                 param = ssm.get_parameter(value)
                 config[key] = param
         return Config(**config)
