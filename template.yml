@@ -219,12 +219,21 @@ Resources:
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
+              # CloudWatch
               - Effect: Allow
                 Action:
                   - "logs:CreateLogGroup"
                   - "logs:CreateLogStream"
                   - "logs:PutLogEvents"
                 Resource: "arn:aws:logs:*:*:*"
+              # SSM
+              - Effect: Allow
+                Action:
+                  - "ssm:GetParameter"
+                Resource:
+                  - !Sub arn:aws:ssm:ap-southeast-1:${AWS::AccountId}:parameter/dsfpl/config/*
+                  - !Sub arn:aws:ssm:ap-southeast-1:${AWS::AccountId}:parameter/dsfpl/config
+              # S3
               - Effect: Allow
                 Action:
                   - "s3:GetObject"
@@ -232,6 +241,7 @@ Resources:
                   - "s3:PutObject"
                 Resource:
                   - "arn:aws:s3:::ds-fpl/*"
+              # Lambda Function
               - Effect: Allow
                 Action:
                   - "lambda:InvokeFunction"
