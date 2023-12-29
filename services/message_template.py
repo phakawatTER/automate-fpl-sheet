@@ -1,5 +1,5 @@
 import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional, Dict
 from models import (
     PlayerGameweekData,
@@ -12,6 +12,7 @@ from models import (
     BootstrapTeam,
 )
 from adapter import FPLAdapter
+from util import TIMEZONE
 
 
 def _get_chance_of_playing_level(chance: int) -> int:
@@ -887,7 +888,7 @@ class GameweekFixtures(_CommonMessageTemplate):
         group: Dict[str, List[FPLMatchFixture]] = {}
 
         for fixture in self.fixtures:
-            kickoff_time = fixture.kickoff_time + timedelta(hours=7)
+            kickoff_time = fixture.kickoff_time.astimezone(TIMEZONE)
             key = kickoff_time.strftime("%Y-%m-%d")
             if key not in group:
                 group[key] = []
@@ -901,7 +902,7 @@ class GameweekFixtures(_CommonMessageTemplate):
         return self.container
 
     def __build_date_box(self, dt: datetime):
-        kickoff_date = (dt + timedelta(hours=7)).strftime("%A %d %B %Y")
+        kickoff_date = dt.astimezone(TIMEZONE).strftime("%A %d %B %Y")
         return {
             "type": "box",
             "layout": "vertical",
@@ -947,6 +948,7 @@ class GameweekFixtures(_CommonMessageTemplate):
 
     def __build_score_box(self, fixture: FPLMatchFixture):
         is_played = fixture.minutes > 0
+        kickoff_time = fixture.kickoff_time.astimezone(TIMEZONE).strftime("%H:%M")
         return {
             "type": "box",
             "cornerRadius": "sm",
@@ -988,7 +990,7 @@ class GameweekFixtures(_CommonMessageTemplate):
                     "type": "text",
                     "flex": 0,
                     "size": "xs",
-                    "text": fixture.kickoff_time.strftime("%H:%M"),
+                    "text": kickoff_time,
                 },
             ],
         }

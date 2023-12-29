@@ -16,6 +16,7 @@ from models import (
     BootstrapElement,
     PlayerGameweekPicksData,
     FPLLiveEventElement,
+    BootstrapTeam,
 )
 import util
 from .firebase_repo import FirebaseRepo
@@ -244,6 +245,16 @@ class Service:
         gameweek_fixtures = await self.fpl_adapter.list_gameweek_fixtures(
             gameweek=gameweek
         )
+        teams = await self.list_league_teams()
+        team_map: dict[int, BootstrapTeam] = {}
+        for team in teams:
+            team_map[team.id] = team
+        for fixture in gameweek_fixtures:
+            team_a = team_map[fixture.team_a]
+            team_h = team_map[fixture.team_h]
+            fixture.team_a_data = team_a
+            fixture.team_h_data = team_h
+
         return gameweek_fixtures
 
     def __is_current_gameweek(self, gameweek: int) -> bool:

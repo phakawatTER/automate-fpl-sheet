@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Union
 from datetime import datetime, timezone, date
-from .bootstrap import BootstrapTeam
 import util
+from .bootstrap import BootstrapTeam
 
 
 @dataclass

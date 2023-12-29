@@ -2,9 +2,11 @@ import time
 import asyncio
 import random
 import functools
+import pytz
 from loguru import logger
 
 RFC3339_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
+TIMEZONE = pytz.timezone("Asia/Bangkok")
 
 
 def time_track(func=None, description: str = ""):
@@ -81,4 +83,5 @@ __all__ = [
     "is_equal_float",
     "convert_to_a1_notation",
     "RFC3339_FORMAT",
+    "TIMEZONE",
 ]

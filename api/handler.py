@@ -401,21 +401,8 @@ def new_line_message_handler(app: App):
             )
             self.handle_clear_gameweeks_cache(group_id)
 
-        async def __list_gameweek_fixtures(self, gameweek: int):
-            fixtures = await self.__fpl_service.list_gameweek_fixtures(gameweek)
-            teams = await self.__fpl_service.list_league_teams()
-            team_map: dict[int, models.BootstrapTeam] = {}
-            for team in teams:
-                team_map[team.id] = team
-            for fixture in fixtures:
-                team_a = team_map[fixture.team_a]
-                team_h = team_map[fixture.team_h]
-                fixture.team_a_data = team_a
-                fixture.team_h_data = team_h
-            return fixtures
-
         async def handle_list_gameweek_fixtures(self, group_id: str, gameweek: int):
-            fixtures = await self.__list_gameweek_fixtures(gameweek)
+            fixtures = await self.__fpl_service.list_gameweek_fixtures(gameweek)
             self.__message_service.send_gameweek_fixtures_message(
                 group_id=group_id,
                 gameweek=gameweek,
@@ -433,7 +420,7 @@ def new_line_message_handler(app: App):
             futures = []
             gameweeks: List[int] = []
             for gw in range(start_gameweek, stop_gameweek + 1, 1):
-                future = self.__list_gameweek_fixtures(gameweek=gw)
+                future = self.__fpl_service.list_gameweek_fixtures(gameweek=gw)
                 futures.append(future)
                 gameweeks.append(gw)
 
