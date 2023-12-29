@@ -71,6 +71,10 @@ sam deploy \
 --stack-name fpl-line-message-api \
 --capabilities CAPABILITY_NAMED_IAM
 
+# clean up deployment files
 rm -rf deployment_package
 rm -rf layer
 rm -rf layer_plot_generator
+rm requirement.deploy.txt
+rm requirement.deploy2.txt
+rm template-export.yml
