@@ -1,6 +1,11 @@
 # fpl-line-bot
 
 fpl-line-bot is LINE bot which is integrated with FPL APIs (Fantasy Premiere League). The bot support various command to process and send back flex message back to LINE group.
+We also support broadcasting line-up and gameweek reminder which will be automated sent to LINE groups that subscribe to H2H league
+
+## <font color="orange">TODO</font>
+
+- We'll support classic league in the future so we user can use with any league
 
 ### List of Commands
 
@@ -77,3 +82,8 @@ Remove league ignored player:
 ## Get Gameweeks Fixtures
 
 <img src="static/readme/batch_fixtures.png" width="800px"/>
+
+## Generate League Players Revenues Plot
+
+<img src="static/readme/plot_2.png" width="400px"/>
+<img src="static/readme/plot_1.png" width="400px"/>
