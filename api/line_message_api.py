@@ -1,4 +1,3 @@
-import re
 import asyncio
 from flask import Flask, request, abort
 from linebot import WebhookHandler
@@ -41,10 +40,11 @@ class LineMessageAPI:
             message: TextMessage = event.message
             text: str = message.text
             text = text.lstrip().strip()
-            is_cmd_message = text.startswith("$luka")
+            is_cmd_message = text.startswith("\\l ")
             if not is_cmd_message:
                 return
-            text = text.removeprefix("$")
+            text = text.removeprefix("\\l ")
+            text = f"luka {text}"
             namespace, message = self.luka_cli.parse_command(args=text)
             if namespace is None and message is None:
                 return

@@ -68,6 +68,9 @@ def get_luka_command_parser():
     revenue_parser.add_argument("--from-gameweek", "-f", type=int, dest="from_gameweek")
     revenue_parser.add_argument("--to-gameweek", "-t", type=int, dest="to_gameweek")
 
+    cache_parser = subparsers.add_parser("cache")
+    cache_parser.add_argument("action", choices=["clear"])
+
     return parser
 
 
@@ -106,30 +109,35 @@ class Luka:
 
     async def map_namespace_to_action(self, namespace: LukaNamespace, group_id: str):
         if namespace.command in ("league", "l"):
-            self.league_action_handler(ns=namespace, group_id=group_id)
+            await self.league_action_handler(ns=namespace, group_id=group_id)
         elif namespace.command in ("player", "p"):
             self.player_action_handler(ns=namespace, group_id=group_id)
         elif namespace.command in ("gameweek", "gw"):
             await self.gameweek_action_handler(ns=namespace, group_id=group_id)
         elif namespace.command in ("revenue", "rev"):
-            pass
+            await self.revenue_action_handler(ns=namespace, group_id=group_id)
+        elif namespace.command in ("cache"):
+            self.cache_action_handler(ns=namespace, group_id=group_id)
+
+    def cache_action_handler(self, ns: LukaNamespace, group_id: str):
+        if ns.action == "clear":
+            self.__line_message_handler.handle_clear_gameweeks_cache(group_id=group_id)
 
     async def revenue_action_handler(self, ns: LukaNamespace, group_id: str):
         if ns.action == "summarize":
             await self.__line_message_handler.handle_get_revenues(group_id=group_id)
         elif ns.action == "plot":
-            _, from_gameweek, to_gameweek = self.validate_gameweek_range(ns)
+            from_gameweek, to_gameweek = ns.from_gameweek, ns.to_gameweek
             if from_gameweek is None or to_gameweek is None:
                 raise ValueError("from_gameweek and to_gameweek should be specified")
-            self.__line_message_handler.handle_gameweek_plots(
+            await self.__line_message_handler.handle_gameweek_plots(
                 from_gameweek=from_gameweek, to_gameweek=to_gameweek, group_id=group_id
             )
 
-    def league_action_handler(self, ns: LukaNamespace, group_id: str):
+    async def league_action_handler(self, ns: LukaNamespace, group_id: str):
         if ns.action == "subscribe":
-            self.__line_message_handler.subscribe_league(
-                group_id=group_id,
-                league_id=ns.id,
+            await self.__line_message_handler.subscribe_league(
+                group_id=group_id, league_id=ns.id
             )
         elif ns.action == "unsubscribe":
             self.__line_message_handler.unsubscribe_league(group_id=group_id)

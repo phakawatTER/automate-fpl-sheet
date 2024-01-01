@@ -60,7 +60,7 @@ class LineMessageHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def subscribe_league(self, group_id: str, league_id: int):
+    async def subscribe_league(self, group_id: str, league_id: int):
         pass
 
     @abc.abstractmethod
@@ -293,8 +293,13 @@ def new_line_message_handler(app: App):
                 abort(response.get("StatusCode"))
             logger.info(response)
             payload_bytes = response.get("Payload").read()
-            urls: List[str] = json.loads(payload_bytes)
-            logger.info(urls)
+            result = json.loads(payload_bytes)
+            if isinstance(result, dict) and result.get("errorMessage") is not None:
+                inner_err_msg = result.get("errorMessage")
+                raise RuntimeError(
+                    f"error calling plot generator with error: {inner_err_msg}"
+                )
+            urls: List[str] = result
             for url in urls:
                 self.__message_service.send_image_messsage(
                     image_url=url, group_id=group_id
