@@ -21,24 +21,24 @@ class MessageHandlerActionGroup:
     GET_GAMEWEEK_FIXTURES = "GET_GAMEWEEK_FIXTURES"
     LIST_GAMEWEEK_FIXTURES = "LIST_GAMEWEEK_FIXTURES"
 
-    @staticmethod
-    def get_commands():
+    @classmethod
+    def get_commands_description(cls):
         return {
-            MessageHandlerActionGroup.GET_GAMEWEEK_FIXTURES: "List gameweek fixtures by given gameweek",
-            MessageHandlerActionGroup.LIST_GAMEWEEK_FIXTURES: "List gameweek fixtures by given gameweek range",
-            MessageHandlerActionGroup.UPDATE_FPL_TABLE: "Update/Get FPL table of given gameweek",
-            MessageHandlerActionGroup.BATCH_UPDATE_FPL_TABLE: "Batch update/get FPL table",
-            MessageHandlerActionGroup.GET_PLAYERS_REVENUES: "Get cummulative revenues",
-            MessageHandlerActionGroup.GENERATE_GAMEWEEKS_PLOT: "Generate cummulative revenue over gameweeks",
-            MessageHandlerActionGroup.GET_PLAYER_GW_PICKS: "List players's first 11 picks of given gameweek",
-            MessageHandlerActionGroup.SUBSCRIBE_LEAGUE: "Subscribe league by league id",
-            MessageHandlerActionGroup.UNSUBSCRIBE_LEAGUE: "Unsubscribe league by league id",
-            MessageHandlerActionGroup.LIST_LEAGUE_PLAYERS: "List subscribed league players",
-            MessageHandlerActionGroup.UPDATE_PLAYER_BANK_ACCOUNT: "Update player's bank account",
-            MessageHandlerActionGroup.CLEAR_ALL_GAMEWEEKS_CACHE: "Clear all gameweeks cache",
-            MessageHandlerActionGroup.ADD_IGNORED_LEAGUE_PLAYER: "Add league ignored player",
-            MessageHandlerActionGroup.REMOVE_IGNORED_LEAGUE_PLAYER: "Remove league ignored player",
-            MessageHandlerActionGroup.UPDATE_LEAGUE_REWARDS: "Update league rewards (should match the number of active players)",
+            cls.GET_GAMEWEEK_FIXTURES: "List gameweek fixtures by given gameweek",
+            cls.LIST_GAMEWEEK_FIXTURES: "List gameweek fixtures by given gameweek range",
+            cls.UPDATE_FPL_TABLE: "Update/Get FPL table of given gameweek",
+            cls.BATCH_UPDATE_FPL_TABLE: "Batch update/get FPL table",
+            cls.GET_PLAYERS_REVENUES: "Get cummulative revenues",
+            cls.GENERATE_GAMEWEEKS_PLOT: "Generate cummulative revenue over gameweeks",
+            cls.GET_PLAYER_GW_PICKS: "List players's first 11 picks of given gameweek",
+            cls.SUBSCRIBE_LEAGUE: "Subscribe league by league id",
+            cls.UNSUBSCRIBE_LEAGUE: "Unsubscribe league by league id",
+            cls.LIST_LEAGUE_PLAYERS: "List subscribed league players",
+            cls.UPDATE_PLAYER_BANK_ACCOUNT: "Update player's bank account",
+            cls.CLEAR_ALL_GAMEWEEKS_CACHE: "Clear all gameweeks cache",
+            cls.ADD_IGNORED_LEAGUE_PLAYER: "Add league ignored player",
+            cls.REMOVE_IGNORED_LEAGUE_PLAYER: "Remove league ignored player",
+            cls.UPDATE_LEAGUE_REWARDS: "Update league rewards (should match the number of active players)",
         }
 
 

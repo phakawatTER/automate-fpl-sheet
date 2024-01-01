@@ -1,3 +1,4 @@
+import abc
 import functools
 import asyncio
 import json
@@ -53,8 +54,82 @@ def run_in_error_wrapper(func=None, message_service: MessageService = None):
     return decorator
 
 
+class LineMessageHandler(abc.ABC):
+    @abc.abstractmethod
+    def unsubscribe_league(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def subscribe_league(self, group_id: str, league_id: int):
+        pass
+
+    @abc.abstractmethod
+    def handle_list_bot_commands(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def handle_batch_update_fpl_table(
+        self, from_gameweek: int, to_gameweek: int, group_id
+    ):
+        pass
+
+    @abc.abstractmethod
+    async def handle_update_fpl_table(self, gameweek: int, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def handle_get_revenues(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def handle_gameweek_plots(
+        self, from_gameweek: int, to_gameweek: int, group_id: str
+    ):
+        pass
+
+    @abc.abstractmethod
+    def handle_list_league_players(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def handle_set_league_player_bank_account(
+        self, group_id: str, bank_account: str, player_index: int
+    ):
+        pass
+
+    @abc.abstractmethod
+    async def handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def handle_clear_gameweeks_cache(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def handle_remove_ignored_player(self, group_id: str, player_index):
+        pass
+
+    @abc.abstractmethod
+    def handle_add_ignored_player(self, group_id: str, player_index: int):
+        pass
+
+    @abc.abstractmethod
+    def handle_update_league_rewards(self, group_id: str, rewards: List[float]):
+        pass
+
+    @abc.abstractmethod
+    async def handle_list_gameweek_fixtures(self, group_id: str, gameweek: int):
+        pass
+
+    @abc.abstractmethod
+    async def handle_list_gameweek_fixtures_by_range(
+        self, group_id: str, start_gameweek: int, stop_gameweek: int
+    ):
+        pass
+
+
 def new_line_message_handler(app: App):
-    class _handler:
+    class _handler(LineMessageHandler):
         def __init__(self, app: App):
             self.__message_service = app.message_service
             self.__firebase_repo = app.firebase_repo
@@ -95,7 +170,7 @@ def new_line_message_handler(app: App):
 
         @run_in_error_wrapper(message_service=app.message_service)
         def handle_list_bot_commands(self, group_id: str):
-            commands = MessageHandlerActionGroup.get_commands()
+            commands = MessageHandlerActionGroup.get_commands_description()
             commands_map_list: List[tuple[str]] = []
             for cmd, desc in commands.items():
                 for pattern, _cmd in PATTERN_ACTIONS.items():
