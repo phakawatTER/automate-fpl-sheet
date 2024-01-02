@@ -233,6 +233,25 @@ Resources:
                 Resource:
                   - !Sub arn:aws:ssm:ap-southeast-1:${AWS::AccountId}:parameter/dsfpl/config/*
                   - !Sub arn:aws:ssm:ap-southeast-1:${AWS::AccountId}:parameter/dsfpl/config
+              # Step Functions
+              - Effect: Allow
+                Action:
+                  - states:ListStateMachines
+                  - states:DescribeStateMachine
+                  - states:ListExecutions
+                  - states:SendTaskFailure
+                  - states:GetExecutionHistory
+                  - states:DescribeActivity
+                  - states:ListActivities
+                  - states:StopExecution
+                  - states:DescribeStateMachineForExecution
+                  - states:SendTaskSuccess
+                  - states:DescribeExecution
+                  - states:StartExecution
+                  - states:SendTaskHeartbeat
+                  - states:GetActivityTask
+                  - states:ListTagsForResource
+                Resource: "*"
               # S3
               - Effect: Allow
                 Action:

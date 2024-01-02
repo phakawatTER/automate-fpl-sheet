@@ -47,6 +47,11 @@ async def execute():
     if should_update_gameweek:
         line_group_ids = app.firebase_repo.list_line_channels()
         for group_id in line_group_ids:
+            app.message_service.send_gameweek_fixtures_message(
+                group_id=group_id,
+                fixtures=next_gameweek_fixtures,
+                gameweek=next_gameweek,
+            )
             app.message_service.send_gameweek_reminder_message(
                 gameweek=next_gameweek,
                 group_id=group_id,

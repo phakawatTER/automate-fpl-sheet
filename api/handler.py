@@ -1,3 +1,4 @@
+import abc
 import functools
 import asyncio
 import json
@@ -53,8 +54,84 @@ def run_in_error_wrapper(func=None, message_service: MessageService = None):
     return decorator
 
 
+class LineMessageHandler(abc.ABC):
+    @abc.abstractmethod
+    def unsubscribe_league(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def subscribe_league(self, group_id: str, league_id: int):
+        pass
+
+    @abc.abstractmethod
+    def handle_list_bot_commands(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def handle_batch_update_fpl_table(
+        self, from_gameweek: int, to_gameweek: int, group_id
+    ):
+        pass
+
+    @abc.abstractmethod
+    async def handle_update_fpl_table(self, group_id: str, gameweek: Optional[int]):
+        pass
+
+    @abc.abstractmethod
+    async def handle_get_revenues(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    async def handle_gameweek_plots(
+        self, from_gameweek: int, to_gameweek: int, group_id: str
+    ):
+        pass
+
+    @abc.abstractmethod
+    def handle_list_league_players(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def handle_set_league_player_bank_account(
+        self, group_id: str, bank_account: str, player_index: int
+    ):
+        pass
+
+    @abc.abstractmethod
+    async def handle_players_gameweek_picks(
+        self, group_id: str, gameweek: Optional[int]
+    ):
+        pass
+
+    @abc.abstractmethod
+    def handle_clear_gameweeks_cache(self, group_id: str):
+        pass
+
+    @abc.abstractmethod
+    def handle_remove_ignored_player(self, group_id: str, player_index):
+        pass
+
+    @abc.abstractmethod
+    def handle_add_ignored_player(self, group_id: str, player_index: int):
+        pass
+
+    @abc.abstractmethod
+    def handle_update_league_rewards(self, group_id: str, rewards: List[float]):
+        pass
+
+    @abc.abstractmethod
+    async def handle_list_gameweek_fixtures(self, group_id: str, gameweek: int):
+        pass
+
+    @abc.abstractmethod
+    async def handle_list_gameweek_fixtures_by_range(
+        self, group_id: str, start_gameweek: int, stop_gameweek: int
+    ):
+        pass
+
+
 def new_line_message_handler(app: App):
-    class _handler:
+    class _handler(LineMessageHandler):
         def __init__(self, app: App):
             self.__message_service = app.message_service
             self.__firebase_repo = app.firebase_repo
@@ -95,7 +172,7 @@ def new_line_message_handler(app: App):
 
         @run_in_error_wrapper(message_service=app.message_service)
         def handle_list_bot_commands(self, group_id: str):
-            commands = MessageHandlerActionGroup.get_commands()
+            commands = MessageHandlerActionGroup.get_commands_description()
             commands_map_list: List[tuple[str]] = []
             for cmd, desc in commands.items():
                 for pattern, _cmd in PATTERN_ACTIONS.items():
@@ -149,7 +226,11 @@ def new_line_message_handler(app: App):
             )
 
         @run_in_error_wrapper(message_service=app.message_service)
-        async def handle_update_fpl_table(self, gameweek: int, group_id: str):
+        async def handle_update_fpl_table(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             league_id = self.__get_group_league_id(group_id)
             self.__message_service.send_text_message(
                 f"Gameweek {gameweek} result is being processed. Please wait for a moment",
@@ -218,8 +299,13 @@ def new_line_message_handler(app: App):
                 abort(response.get("StatusCode"))
             logger.info(response)
             payload_bytes = response.get("Payload").read()
-            urls: List[str] = json.loads(payload_bytes)
-            logger.info(urls)
+            result = json.loads(payload_bytes)
+            if isinstance(result, dict) and result.get("errorMessage") is not None:
+                inner_err_msg = result.get("errorMessage")
+                raise RuntimeError(
+                    f"error calling plot generator with error: {inner_err_msg}"
+                )
+            urls: List[str] = result
             for url in urls:
                 self.__message_service.send_image_messsage(
                     image_url=url, group_id=group_id
@@ -278,8 +364,16 @@ def new_line_message_handler(app: App):
             self.handle_list_league_players(group_id)
 
         @run_in_error_wrapper(message_service=app.message_service)
-        async def handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+        async def handle_players_gameweek_picks(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             league_id = self.__get_group_league_id(group_id)
+            self.__message_service.send_text_message(
+                text=f"🤖 fetching player picks for gameweek {gameweek}",
+                group_id=group_id,
+            )
             player_gameweek_picks = await self.__fpl_service.list_player_gameweek_picks(
                 gameweek=gameweek,
                 league_id=league_id,
@@ -401,7 +495,11 @@ def new_line_message_handler(app: App):
             )
             self.handle_clear_gameweeks_cache(group_id)
 
-        async def handle_list_gameweek_fixtures(self, group_id: str, gameweek: int):
+        async def handle_list_gameweek_fixtures(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             fixtures = await self.__fpl_service.list_gameweek_fixtures(gameweek)
             self.__message_service.send_gameweek_fixtures_message(
                 group_id=group_id,
