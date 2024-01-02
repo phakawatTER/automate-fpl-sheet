@@ -370,6 +370,10 @@ def new_line_message_handler(app: App):
             if gameweek is None:
                 gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             league_id = self.__get_group_league_id(group_id)
+            self.__message_service.send_text_message(
+                text=f"🤖 fetching player picks for gameweek {gameweek}",
+                group_id=group_id,
+            )
             player_gameweek_picks = await self.__fpl_service.list_player_gameweek_picks(
                 gameweek=gameweek,
                 league_id=league_id,
