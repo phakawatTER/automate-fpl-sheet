@@ -6,22 +6,45 @@ from typing import Optional
 from .handler import LineMessageHandler
 
 
+class LeagueAction:
+    SUBSCRIBE = "subscribe"
+    UNSUBSCRIBE = "unsubscribe"
+    UPDATE_REWARDS = "update-rewards"
+
+
+class PlayerAction:
+    LIST = "ls"
+    UPDATE_BANK_ACCOUNT = "update-bank-account"
+    IGNORE = "ignore"
+    UNIGNORE = "unignore"
+
+
+class GameweekAction:
+    GET_FIXTURES = "get-fixtures"
+    GET_RESULT = "get-result"
+    GET_PICKS = "get-picks"
+
+
+class RevenueAction:
+    SUMMARIZE = "summarize"
+    PLOT = "plot"
+
+
+class CacheAction:
+    CLEAR = "clear"
+
+
 @dataclass
 class LukaNamespace(argparse.Namespace):
     command: str
     action: str
-    id: str
-    type: str
-    bank_account: str
+    id: Optional[str]
+    type: Optional[str]
+    bank_account: Optional[str]
     gameweek: Optional[int]
-    from_gameweek: int
-    to_gameweek: int
-    rewards: list[float]
-
-
-@dataclass
-class HelpMessage:
-    message: str
+    from_gameweek: Optional[int]
+    to_gameweek: Optional[int]
+    rewards: Optional[list[float]]
 
 
 def get_luka_command_parser():
@@ -31,7 +54,12 @@ def get_luka_command_parser():
     subparsers = luka_parser.add_subparsers(dest="command")
     league_parser = subparsers.add_parser("league", aliases=["l"])
     league_parser.add_argument(
-        "action", choices=["subscribe", "unsubscribe", "update-rewards"]
+        "action",
+        choices=[
+            LeagueAction.SUBSCRIBE,
+            LeagueAction.UNSUBSCRIBE,
+            LeagueAction.UPDATE_REWARDS,
+        ],
     )
     league_parser.add_argument(
         "--rewards",
@@ -45,7 +73,12 @@ def get_luka_command_parser():
     player_parser = subparsers.add_parser("player", aliases=["p"])
     player_parser.add_argument(
         "action",
-        choices=["ls", "update-bank-account", "ignore", "unignore"],
+        choices=[
+            PlayerAction.LIST,
+            PlayerAction.UPDATE_BANK_ACCOUNT,
+            PlayerAction.IGNORE,
+            PlayerAction.UNIGNORE,
+        ],
         help="Available commands for players",
     )
     player_parser.add_argument("--id", type=int)
@@ -54,7 +87,11 @@ def get_luka_command_parser():
     gameweek_parser = subparsers.add_parser("gameweek", aliases=["gw"])
     gameweek_parser.add_argument(
         "action",
-        choices=["get-fixtures", "get-result", "get-picks"],
+        choices=[
+            GameweekAction.GET_FIXTURES,
+            GameweekAction.GET_RESULT,
+            GameweekAction.GET_PICKS,
+        ],
         help="Available commands for FPL gameweeks",
     )
     gameweek_parser.add_argument("gameweek", type=int, nargs="?")
@@ -64,12 +101,14 @@ def get_luka_command_parser():
     gameweek_parser.add_argument("--to-gameweek", "-t", type=int, dest="to_gameweek")
 
     revenue_parser = subparsers.add_parser("revenue", aliases=["rev"])
-    revenue_parser.add_argument("action", choices=["summarize", "plot"])
+    revenue_parser.add_argument(
+        "action", choices=[RevenueAction.SUMMARIZE, RevenueAction.PLOT]
+    )
     revenue_parser.add_argument("--from-gameweek", "-f", type=int, dest="from_gameweek")
     revenue_parser.add_argument("--to-gameweek", "-t", type=int, dest="to_gameweek")
 
     cache_parser = subparsers.add_parser("cache")
-    cache_parser.add_argument("action", choices=["clear"])
+    cache_parser.add_argument("action", choices=[CacheAction.CLEAR])
 
     return parser
 
@@ -83,8 +122,8 @@ class Luka:
         cmd: Optional[list[str]] = None
         if args is not None:
             cmd = args.split()
-        helper_buffer = io.StringIO()
         if not allow_sys_exit:
+            helper_buffer = io.StringIO()
             err_buffer = io.StringIO()
             sys.stdout = helper_buffer
             sys.stderr = err_buffer
@@ -96,10 +135,8 @@ class Luka:
                 message = None
                 if e.code == 0:
                     message = helper_buffer.getvalue()
-                elif e.code == 2:
-                    message = err_buffer.getvalue()
                 else:
-                    raise e
+                    message = err_buffer.getvalue()
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
             return ns, message
@@ -120,13 +157,13 @@ class Luka:
             self.cache_action_handler(ns=namespace, group_id=group_id)
 
     def cache_action_handler(self, ns: LukaNamespace, group_id: str):
-        if ns.action == "clear":
+        if ns.action == CacheAction.CLEAR:
             self.__line_message_handler.handle_clear_gameweeks_cache(group_id=group_id)
 
     async def revenue_action_handler(self, ns: LukaNamespace, group_id: str):
-        if ns.action == "summarize":
+        if ns.action == RevenueAction.SUMMARIZE:
             await self.__line_message_handler.handle_get_revenues(group_id=group_id)
-        elif ns.action == "plot":
+        elif ns.action == RevenueAction.PLOT:
             from_gameweek, to_gameweek = ns.from_gameweek, ns.to_gameweek
             if from_gameweek is None or to_gameweek is None:
                 raise ValueError("from_gameweek and to_gameweek should be specified")
@@ -135,13 +172,13 @@ class Luka:
             )
 
     async def league_action_handler(self, ns: LukaNamespace, group_id: str):
-        if ns.action == "subscribe":
+        if ns.action == LeagueAction.SUBSCRIBE:
             await self.__line_message_handler.subscribe_league(
                 group_id=group_id, league_id=ns.id
             )
-        elif ns.action == "unsubscribe":
+        elif ns.action == LeagueAction.UNSUBSCRIBE:
             self.__line_message_handler.unsubscribe_league(group_id=group_id)
-        elif ns.action == "update-rewards":
+        elif ns.action == LeagueAction.UPDATE_REWARDS:
             self.__line_message_handler.handle_update_league_rewards(
                 group_id=group_id, rewards=ns.rewards
             )
@@ -149,51 +186,54 @@ class Luka:
     def player_action_handler(self, ns: LukaNamespace, group_id: str):
         if ns.action == "ls":
             self.__line_message_handler.handle_list_league_players(group_id=group_id)
-        elif ns.action == "update-bank-account":
+        elif ns.action == PlayerAction.LIST:
             self.__line_message_handler.handle_set_league_player_bank_account(
                 group_id=group_id, player_index=ns.id
             )
-        elif ns.action == "ignore":
+        elif ns.action == PlayerAction.IGNORE:
             self.__line_message_handler.handle_add_ignored_player(
                 group_id=group_id, player_index=ns.id
             )
-        elif ns.action == "unignore":
+        elif ns.action == PlayerAction.UNIGNORE:
             self.__line_message_handler.handle_remove_ignored_player(
                 group_id=group_id, player_index=ns.id
             )
 
     async def gameweek_action_handler(self, ns: LukaNamespace, group_id: str):
-        gameweek, from_gameweek, to_gameweek = self.validate_gameweek_range(ns)
-        if ns.action == "get-fixtures":
-            if ns.gameweek is not None:
-                await self.__line_message_handler.handle_list_gameweek_fixtures(
-                    gameweek=gameweek,
-                    group_id=group_id,
-                )
-            else:
+        gameweek, from_gameweek, to_gameweek = (
+            ns.gameweek,
+            ns.from_gameweek,
+            ns.to_gameweek,
+        )
+        if ns.action == GameweekAction.GET_FIXTURES:
+            if ns.from_gameweek is not None and ns.to_gameweek is not None:
                 await self.__line_message_handler.handle_list_gameweek_fixtures_by_range(
                     group_id=group_id,
                     start_gameweek=from_gameweek,
                     stop_gameweek=to_gameweek,
                 )
-        elif ns.action == "get-result":
-            if ns.gameweek is not None:
-                await self.__line_message_handler.handle_update_fpl_table(
-                    gameweek=gameweek, group_id=group_id
-                )
-            else:
+                return
+            await self.__line_message_handler.handle_list_gameweek_fixtures(
+                gameweek=gameweek,
+                group_id=group_id,
+            )
+        elif ns.action == GameweekAction.GET_RESULT:
+            if ns.from_gameweek is not None and ns.to_gameweek is not None:
                 await self.__line_message_handler.handle_batch_update_fpl_table(
                     from_gameweek=from_gameweek,
                     to_gameweek=to_gameweek,
                     group_id=group_id,
                 )
-        elif ns.action == "get-picks":
-            if ns.gameweek is not None:
-                await self.__line_message_handler.handle_players_gameweek_picks(
-                    gameweek=gameweek, group_id=group_id
-                )
-            else:
+                return
+            await self.__line_message_handler.handle_update_fpl_table(
+                gameweek=gameweek, group_id=group_id
+            )
+        elif ns.action == GameweekAction.GET_PICKS:
+            if ns.from_gameweek is not None or ns.to_gameweek is not None:
                 raise ValueError("get-picks does not support range")
+            await self.__line_message_handler.handle_players_gameweek_picks(
+                gameweek=gameweek, group_id=group_id
+            )
 
     def validate_gameweek_range(self, ns: LukaNamespace):
         if ns.gameweek is not None:

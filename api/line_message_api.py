@@ -6,7 +6,7 @@ from linebot.exceptions import InvalidSignatureError
 from loguru import logger
 from app import App
 from .handler import new_line_message_handler
-from .command_mapper import Luka
+from ._command_parser import Luka
 
 
 class LineMessageAPI:

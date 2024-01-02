@@ -74,7 +74,7 @@ class LineMessageHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def handle_update_fpl_table(self, gameweek: int, group_id: str):
+    async def handle_update_fpl_table(self, group_id: str, gameweek: Optional[int]):
         pass
 
     @abc.abstractmethod
@@ -98,7 +98,9 @@ class LineMessageHandler(abc.ABC):
         pass
 
     @abc.abstractmethod
-    async def handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+    async def handle_players_gameweek_picks(
+        self, group_id: str, gameweek: Optional[int]
+    ):
         pass
 
     @abc.abstractmethod
@@ -224,7 +226,11 @@ def new_line_message_handler(app: App):
             )
 
         @run_in_error_wrapper(message_service=app.message_service)
-        async def handle_update_fpl_table(self, gameweek: int, group_id: str):
+        async def handle_update_fpl_table(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             league_id = self.__get_group_league_id(group_id)
             self.__message_service.send_text_message(
                 f"Gameweek {gameweek} result is being processed. Please wait for a moment",
@@ -358,7 +364,11 @@ def new_line_message_handler(app: App):
             self.handle_list_league_players(group_id)
 
         @run_in_error_wrapper(message_service=app.message_service)
-        async def handle_players_gameweek_picks(self, gameweek: int, group_id: str):
+        async def handle_players_gameweek_picks(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             league_id = self.__get_group_league_id(group_id)
             player_gameweek_picks = await self.__fpl_service.list_player_gameweek_picks(
                 gameweek=gameweek,
@@ -481,7 +491,11 @@ def new_line_message_handler(app: App):
             )
             self.handle_clear_gameweeks_cache(group_id)
 
-        async def handle_list_gameweek_fixtures(self, group_id: str, gameweek: int):
+        async def handle_list_gameweek_fixtures(
+            self, group_id: str, gameweek: Optional[int] = None
+        ):
+            if gameweek is None:
+                gameweek = self.__fpl_service.get_current_gameweek_from_dynamodb()
             fixtures = await self.__fpl_service.list_gameweek_fixtures(gameweek)
             self.__message_service.send_gameweek_fixtures_message(
                 group_id=group_id,
