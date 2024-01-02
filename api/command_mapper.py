@@ -25,7 +25,7 @@ class HelpMessage:
 
 
 def get_luka_command_parser():
-    parser = argparse.ArgumentParser(prog="luka")
+    parser = argparse.ArgumentParser(prog="LUKA")
     prog_parser = parser.add_subparsers(dest="prog")
     luka_parser = prog_parser.add_parser("luka")
     subparsers = luka_parser.add_subparsers(dest="command")
