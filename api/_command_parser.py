@@ -1,7 +1,6 @@
 import sys
 import io
 import argparse
-from dataclasses import dataclass
 from typing import Optional
 from .handler import LineMessageHandler
 
@@ -34,7 +33,6 @@ class CacheAction:
     CLEAR = "clear"
 
 
-@dataclass
 class LukaNamespace(argparse.Namespace):
     command: str
     action: str
