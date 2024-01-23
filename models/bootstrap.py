@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import List, Optional
 from enum import Enum
 
@@ -47,6 +47,12 @@ class BootstrapGameweek:
     transfers_made: int
     most_captained: int
     most_vice_captained: int
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
     def __post_init__(self):
         if len(self.chip_plays) > 0 and isinstance(self.chip_plays[0], dict):

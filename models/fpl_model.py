@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import List, Optional, Dict, Union
 from datetime import datetime, timezone, date
 import util
@@ -10,6 +10,12 @@ class FPLH2HResponse:
     has_next: bool
     page: int
     results: List["FPLH2HData"]
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
 
 @dataclass
@@ -40,6 +46,12 @@ class FPLH2HData:
     is_bye: bool
     knockout_name: str
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLFantasyTeam:
@@ -47,6 +59,12 @@ class FPLFantasyTeam:
     automatic_subs: List[int]
     entry_history: "FPLEntryHistory"
     picks: List["FPLPick"]
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
 
 @dataclass
@@ -63,6 +81,12 @@ class FPLEntryHistory:
     event_transfers_cost: int
     points_on_bench: int
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLPick:
@@ -72,11 +96,23 @@ class FPLPick:
     is_captain: bool
     is_vice_captain: bool
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLPlayerData:
     history: List["FPLPlayerHistory"]
     history_past: List["FPLPlayerSeasonHistory"]
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
 
 @dataclass
@@ -118,6 +154,12 @@ class FPLPlayerHistory:
     transfers_in: int
     transfers_out: int
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLPlayerSeasonHistory:
@@ -149,12 +191,24 @@ class FPLPlayerSeasonHistory:
     expected_goal_involvements: float
     expected_goals_conceded: float
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLLeagueStandings:
     league_id: int
     league_name: str
     standings: List["FPLTeamStanding"]
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
 
 @dataclass
@@ -174,11 +228,23 @@ class FPLTeamStanding:
     matches_lost: int
     points_for: int
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
 
 @dataclass
 class FPLEventStatusResponse:
     status: List["FPLEventStatus"]
     leagues: bool = field(default=False)
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
 
 @dataclass
@@ -187,6 +253,12 @@ class FPLEventStatus:
     date: date
     event: int
     points: float
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
     def __post_init__(self):
         self.date = (
@@ -256,6 +328,12 @@ class FPLPlayerStats:
     total_points: int
     in_dreamteam: bool
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
     @staticmethod
     def create_from_dict(data: dict):
         return FPLPlayerStats(**data)
@@ -266,6 +344,12 @@ class FPLLiveEventElement:
     id: int
     stats: FPLPlayerStats
     explain: any
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
 
     @staticmethod
     def create_from_dict(data: dict):
@@ -280,6 +364,12 @@ class FPLLiveEventElement:
 class FPLLiveEventResponse:
     elements: List[FPLLiveEventElement]
 
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
     @staticmethod
     def create_from_dict(data: List[dict]):
         return FPLLiveEventResponse(
@@ -292,3 +382,9 @@ class FPLLeagueEntry:
     entry: int
     entry_name: str
     player_name: str
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
