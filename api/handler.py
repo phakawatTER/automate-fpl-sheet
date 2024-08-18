@@ -93,7 +93,7 @@ class LineMessageHandler(abc.ABC):
 
     @abc.abstractmethod
     def handle_set_league_player_bank_account(
-        self, group_id: str, bank_account: str, player_index: int
+        self, group_id: str, bank_account: str, player_id: int
     ):
         pass
 
@@ -322,7 +322,9 @@ def new_line_message_handler(app: App):
                 abort(404)
             text = ""
             for i, p in enumerate(players):
-                first_name = p.name.split(" ")[0]
+                p_name = p.name.split(" ")[0]
+                p_id = p.player_id
+                first_name = f"{p_name} {p_id}"
                 is_ignored = p.player_id in ignored_player_ids
 
                 text += (
@@ -335,7 +337,7 @@ def new_line_message_handler(app: App):
             self.__message_service.send_text_message(text=text, group_id=group_id)
 
         def handle_set_league_player_bank_account(
-            self, group_id: str, bank_account: str, player_index: int
+            self, group_id: str, bank_account: str, player_id: int
         ):
             league_id = self.__get_group_league_id(group_id)
             players = self.__firebase_repo.list_league_players(league_id)
@@ -343,8 +345,8 @@ def new_line_message_handler(app: App):
                 abort(404)
 
             player: Optional[models.PlayerData] = None
-            for i, p in enumerate(players):
-                if i == player_index:
+            for p in players:
+                if p.player_id == player_id:
                     p.bank_account = bank_account
                     player = p
                     break

@@ -14,3 +14,4 @@ env_fpl/
 env_plot_generator/
 requirement.deploy.txt
 requirement.deploy2.txt
+.vscode/*

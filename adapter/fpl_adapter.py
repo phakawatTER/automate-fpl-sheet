@@ -107,6 +107,30 @@ class FPLAdapter:
             ],
         )
 
+    async def get_classic_league_standings(self, league_id: int):
+        url = urljoin(
+            FPLAdapter.BASE_URL,
+            f"/api/leagues-classic/{league_id}/standings",
+        )
+        response = await self.__get_request(url)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(
+                f"unexpected http status code: {response.status_code} with response data: {response.content}"
+            )
+        data: dict = response.json()
+        standings = data.get("standings")
+        return models.FPLClassicLeagueStandingData(
+            league=models.FPLClassicLeagueInfo(**data.get("league")),
+            standings=models.FPLClassicLeagueStandings(
+                has_next=standings.get("has_next"),
+                page=standings.get("page"),
+                results=[
+                    models.FPLClassicLeagueStandingResult(**d)
+                    for d in standings.get("results")
+                ],
+            ),
+        )
+
     @util.time_track(description="FPLAdapter.get_h2h_results")
     async def get_h2h_results(self, gameweek: int, league_id: int):
         url = urljoin(
@@ -125,6 +149,26 @@ class FPLAdapter:
             has_next=data.get("has_next"),
             page=data.get("page"),
             results=[models.FPLH2HData(**d) for d in data.get("results")],
+        )
+
+    @util.time_track(description="FPLAdapter.get_player_gameweek_picks")
+    async def get_player_gameweek_picks(self, gameweek: int, player_id: int):
+        url = urljoin(
+            FPLAdapter.BASE_URL, f"/api/entry/{player_id}/event/{gameweek}/picks/"
+        )
+        response = await self.__get_request(url)
+        if response.status_code != HTTPStatus.OK:
+            raise FPLError(
+                f"unexpected http status code: {response.status_code} with response data: {response.content}"
+            )
+        data = response.json()
+
+        return models.FPLPlayerGameweekPicksData(
+            active_chip=data.get("active_chip"),
+            entry_history=models.FPLPlayerGameweekPickEntryHistory(
+                **data.get("entry_history"),
+            ),
+            picks=[models.FPLPlayerGameweekPick(**d) for d in data.get("picks")],
         )
 
     @util.time_track(description="FPLAdapter.get_player_gameweek_info")

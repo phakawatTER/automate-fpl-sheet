@@ -388,3 +388,84 @@ class FPLLeagueEntry:
         for k, v in kwargs.items():
             if k in names:
                 setattr(self, k, v)
+
+
+@dataclass
+class FPLPlayerGameweekPick:
+    element: int
+    position: int
+    multiplier: int
+    is_captain: bool
+    is_vice_captain: bool
+
+
+@dataclass
+class FPLPlayerGameweekPickEntryHistory:
+    event: int
+    points: int
+    total_points: int
+    rank: int
+    rank_sort: int
+    overall_rank: int
+    percentile_rank: int
+    bank: int
+    value: int
+    event_transfers: int
+    event_transfers_cost: int
+    points_on_bench: int
+
+
+@dataclass
+class FPLPlayerGameweekPicksData:
+    active_chip: Optional[str]
+    entry_history: FPLPlayerGameweekPickEntryHistory
+    picks: List[FPLPlayerGameweekPick]
+
+    def __init__(self, **kwargs):
+        names = set([f.name for f in fields(self)])
+        for k, v in kwargs.items():
+            if k in names:
+                setattr(self, k, v)
+
+
+@dataclass
+class FPLClassicLeagueStandingResult:
+    id: int
+    event_total: int
+    player_name: str
+    rank: int
+    last_rank: int
+    rank_sort: int
+    total: int
+    entry: int
+    entry_name: str
+
+
+@dataclass
+class FPLClassicLeagueStandings:
+    has_next: bool
+    page: int
+    results: List[FPLClassicLeagueStandingResult]
+
+
+@dataclass
+class FPLClassicLeagueInfo:
+    id: int
+    name: str
+    created: str
+    closed: bool
+    max_entries: Optional[int]
+    league_type: str
+    scoring: str
+    admin_entry: int
+    start_event: int
+    code_privacy: str
+    has_cup: bool
+    cup_league: Optional[int]
+    rank: Optional[int]
+
+
+@dataclass
+class FPLClassicLeagueStandingData:
+    league: FPLClassicLeagueInfo
+    standings: FPLClassicLeagueStandings

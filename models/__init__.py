@@ -15,6 +15,13 @@ from .fpl_model import (
     FPLLiveEventResponse,
     FPLLiveEventElement,
     FPLLeagueEntry,
+    FPLPlayerGameweekPick,
+    FPLPlayerGameweekPickEntryHistory,
+    FPLPlayerGameweekPicksData,
+    FPLClassicLeagueStandingResult,
+    FPLClassicLeagueStandings,
+    FPLClassicLeagueInfo,
+    FPLClassicLeagueStandingData,
 )
 
 from .model import (
@@ -62,4 +69,11 @@ __all__ = [
     "PlayerData",
     "LeagueSheet",
     "BootstrapTeam",
+    "FPLPlayerGameweekPick",
+    "FPLPlayerGameweekPickEntryHistory",
+    "FPLPlayerGameweekPicksData",
+    "FPLClassicLeagueStandingResult",
+    "FPLClassicLeagueStandings",
+    "FPLClassicLeagueInfo",
+    "FPLClassicLeagueStandingData",
 ]

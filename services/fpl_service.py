@@ -80,35 +80,25 @@ class Service:
 
     @util.time_track(description="Construct Players Gameweek Data")
     async def __construct_players_gameweek_data(self, gameweek: int, league_id: int):
-        h2h_result = await self.fpl_adapter.get_h2h_results(
-            gameweek=gameweek,
-            league_id=league_id,
+        classic_standings = await self.fpl_adapter.get_classic_league_standings(
+            league_id=league_id
         )
         players_points_map: Dict[int, PlayerGameweekData] = {}
-        results = h2h_result.results
         ignored_players = self.firebase_repo.list_league_ignored_players(league_id)
         ignored_players.append(None)
         league_players = self.firebase_repo.list_league_players(league_id)
         if league_players is None:
             raise Exception(f"league players for {league_id} not found")
 
-        for result in results:
+        for result in classic_standings.standings.results:
             # player 1
-            p1_name = result.entry_1_name
-            p1_point = util.add_noise(result.entry_1_points)
-            p1_id = result.entry_1_entry
-            # player 2
-            p2_name = result.entry_2_name
-            p2_point = util.add_noise(result.entry_2_points)
-            p2_id = result.entry_2_entry
+            p1_name = result.entry_name
+            p1_point = util.add_noise(result.event_total)
+            p1_id = result.entry
 
             if p1_id not in ignored_players:
                 players_points_map[p1_id] = PlayerGameweekData(
                     team_name=p1_name, player_id=p1_id, points=p1_point
-                )
-            if p2_id not in ignored_players:
-                players_points_map[p2_id] = PlayerGameweekData(
-                    team_name=p2_name, player_id=p2_id, points=p2_point
                 )
 
         futures = []
@@ -345,9 +335,9 @@ class Service:
 
     @util.time_track(description="List player gameweek picks")
     async def list_player_gameweek_picks(self, gameweek: int, league_id: int):
-        gameweek_live_event_dict: Dict[
-            int, FPLLiveEventElement
-        ] = await self.get_gameweek_live_event(gameweek=gameweek)
+        gameweek_live_event_dict: Dict[int, FPLLiveEventElement] = (
+            await self.get_gameweek_live_event(gameweek=gameweek)
+        )
         fantasy_teams, players_data = await self.__list_fantasy_teams(
             gameweek=gameweek, league_id=league_id
         )

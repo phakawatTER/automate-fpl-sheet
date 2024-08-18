@@ -21,7 +21,7 @@ async def main():
     args = parser.parse_args()
 
     # Access the value of the gameweek argument
-    gameweek: int = args.gameweek
+    gameweek: int | None = args.gameweek
     if gameweek is None:
         raise Exception("invalid gameweek value")
     if gameweek < 1 or gameweek > 38:

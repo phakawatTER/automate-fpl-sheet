@@ -182,11 +182,13 @@ class Luka:
             )
 
     def player_action_handler(self, ns: LukaNamespace, group_id: str):
-        if ns.action == "ls":
+        if ns.action == PlayerAction.LIST:
             self.__line_message_handler.handle_list_league_players(group_id=group_id)
-        elif ns.action == PlayerAction.LIST:
+        elif ns.action == PlayerAction.UPDATE_BANK_ACCOUNT:
             self.__line_message_handler.handle_set_league_player_bank_account(
-                group_id=group_id, player_index=ns.id
+                group_id=group_id,
+                player_id=ns.id,
+                bank_account=ns.bank_account,
             )
         elif ns.action == PlayerAction.IGNORE:
             self.__line_message_handler.handle_add_ignored_player(

@@ -29,7 +29,7 @@ class App:
         self.linebot = LineBot(config=self.config)
         self.message_service = services.MessageService(bot=self.linebot)
 
-        fpl_adapter = FPLAdapter(cookies=self.config.cookies)
+        self.fpl_adapter = FPLAdapter(cookies=self.config.cookies)
 
         firebase_db = FirebaseRealtimeDatabase(
             database_url=self.config.firebase_db_url,
@@ -39,11 +39,11 @@ class App:
 
         self.fpl_service = services.FPLService(
             config=self.config,
-            fpl_adapter=fpl_adapter,
+            fpl_adapter=self.fpl_adapter,
             firebase_repo=self.firebase_repo,
         )
         self.subscription_service = services.SubscriptionService(
-            fpl_adapter=fpl_adapter,
+            fpl_adapter=self.fpl_adapter,
             firebase_repo=self.firebase_repo,
         )
 
