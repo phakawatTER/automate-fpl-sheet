@@ -227,6 +227,9 @@ class GameweekResultMessage(_CommonMessageTemplate):
                 player_name += f" {top3_icons[i]}"
             else:
                 player_name += " 💩"
+            subsitution_cost = (
+                f" ({player.subsitution_cost})" if player.subsitution_cost < 0 else ""
+            )
             content = {
                 "type": "box",
                 "layout": "vertical",
@@ -248,7 +251,7 @@ class GameweekResultMessage(_CommonMessageTemplate):
                             },
                             {
                                 "type": "text",
-                                "text": f"{point}",
+                                "text": f"{point}{subsitution_cost}",
                                 "color": Color.NORMAL,
                                 "size": "md",
                                 "flex": 1,
@@ -267,10 +270,12 @@ class GameweekResultMessage(_CommonMessageTemplate):
                     "contents": [
                         {
                             "type": "text",
-                            "text": player.bank_account
-                            if player.bank_account is not None
-                            and player.bank_account != ""
-                            else player.name,
+                            "text": (
+                                player.bank_account
+                                if player.bank_account is not None
+                                and player.bank_account != ""
+                                else player.name
+                            ),
                             "color": Color.NORMAL,
                             "size": "sm",
                             "flex": 5,
@@ -368,11 +373,11 @@ class RevenueMessage(_CommonMessageTemplate):
                             {
                                 "type": "text",
                                 "text": f"{revenue}฿",
-                                "color": Color.SUCCESS
-                                if revenue > 0
-                                else Color.DANGER
-                                if revenue < 0
-                                else Color.NORMAL,
+                                "color": (
+                                    Color.SUCCESS
+                                    if revenue > 0
+                                    else Color.DANGER if revenue < 0 else Color.NORMAL
+                                ),
                                 "size": "md",
                                 "flex": 1,
                                 "weight": "bold",
@@ -460,9 +465,11 @@ class PlayerGameweekPickMessage:
                                 "type": "text",
                                 "size": "xs",
                                 "color": Color.NORMAL,
-                                "text": pick.news
-                                if pick.news is not None and pick.news != ""
-                                else "-",
+                                "text": (
+                                    pick.news
+                                    if pick.news is not None and pick.news != ""
+                                    else "-"
+                                ),
                                 "flex": 0,
                                 "align": "start",
                             },
@@ -597,9 +604,9 @@ class PlayerGameweekPickMessageV2:
                             "text": f"{total_points}",
                             "size": "xxl",
                             "weight": "bold",
-                            "color": FPL_TEXT_COLOR
-                            if total_points >= 0
-                            else Color.DANGER,
+                            "color": (
+                                FPL_TEXT_COLOR if total_points >= 0 else Color.DANGER
+                            ),
                         },
                         {
                             "type": "text",
@@ -613,9 +620,9 @@ class PlayerGameweekPickMessageV2:
                             "align": "end",
                             "text": f"{transfer_count} ({-transfer_cost})",
                             "size": "md",
-                            "color": FPL_TEXT_COLOR
-                            if total_points >= 0
-                            else Color.DANGER,
+                            "color": (
+                                FPL_TEXT_COLOR if total_points >= 0 else Color.DANGER
+                            ),
                         },
                     ],
                 },
@@ -746,9 +753,11 @@ class PlayerGameweekPickMessageV2:
                         "contents": [
                             {
                                 "type": "text",
-                                "text": f"{p.gameweek_points}"
-                                if p.gameweek_points is not None
-                                else "-",
+                                "text": (
+                                    f"{p.gameweek_points}"
+                                    if p.gameweek_points is not None
+                                    else "-"
+                                ),
                                 "weight": "bold",
                                 "size": "xs",
                                 "align": "center",
@@ -959,40 +968,42 @@ class GameweekFixtures(_CommonMessageTemplate):
             "width": "60px",
             "justifyContent": "space-around",
             "margin": "md",
-            "contents": [
-                {
-                    "type": "text",
-                    "flex": 0,
-                    "weight": "bold",
-                    "size": "md",
-                    "text": f"{fixture.team_h_score}",
-                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
-                },
-                {
-                    "type": "text",
-                    "flex": 0,
-                    "size": "md",
-                    "text": "|",
-                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
-                },
-                {
-                    "type": "text",
-                    "flex": 0,
-                    "weight": "bold",
-                    "size": "md",
-                    "text": f"{fixture.team_a_score}",
-                    "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
-                },
-            ]
-            if is_played
-            else [
-                {
-                    "type": "text",
-                    "flex": 0,
-                    "size": "xs",
-                    "text": kickoff_time,
-                },
-            ],
+            "contents": (
+                [
+                    {
+                        "type": "text",
+                        "flex": 0,
+                        "weight": "bold",
+                        "size": "md",
+                        "text": f"{fixture.team_h_score}",
+                        "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                    },
+                    {
+                        "type": "text",
+                        "flex": 0,
+                        "size": "md",
+                        "text": "|",
+                        "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                    },
+                    {
+                        "type": "text",
+                        "flex": 0,
+                        "weight": "bold",
+                        "size": "md",
+                        "text": f"{fixture.team_a_score}",
+                        "color": Color.TOPIC if is_played else FPL_TEXT_COLOR,
+                    },
+                ]
+                if is_played
+                else [
+                    {
+                        "type": "text",
+                        "flex": 0,
+                        "size": "xs",
+                        "text": kickoff_time,
+                    },
+                ]
+            ),
         }
 
     def __build_team_box(self, team: BootstrapTeam, is_team_a: bool = False):

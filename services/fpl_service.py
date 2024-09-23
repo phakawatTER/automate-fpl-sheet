@@ -47,12 +47,14 @@ class Service:
         )
         return response
 
-    async def __construct_players_gameweek_pick_data(
+    async def __construct_player_gameweek_pick_data(
         self, player: PlayerGameweekData, gameweek: int
     ):
         player_team = await self.fpl_adapter.get_player_team_by_id(
             player.player_id, gameweek=gameweek
         )
+        player.points -= player_team.entry_history.event_transfers_cost
+        player.subsitution_cost = -1 * player_team.entry_history.event_transfers_cost
         for pick in player_team.picks:
             player_gameweek_history: Optional[FPLPlayerHistory] = None
             if pick.is_captain or pick.is_vice_captain:
@@ -63,6 +65,7 @@ class Service:
                 )
             if player_gameweek_history is not None:
                 if pick.is_captain:
+                    # adding some noise to captain pick
                     player.points += (
                         player_gameweek_history.total_points / 10000 * pick.multiplier
                     )
@@ -70,6 +73,7 @@ class Service:
                         player_gameweek_history.total_points * pick.multiplier
                     )
                 if pick.is_vice_captain:
+                    # adding some noise to vice captain pick
                     player.points += (
                         player_gameweek_history.total_points / 1000000 * pick.multiplier
                     )
@@ -103,7 +107,7 @@ class Service:
 
         futures = []
         for _, player in players_points_map.items():
-            player_result_future = self.__construct_players_gameweek_pick_data(
+            player_result_future = self.__construct_player_gameweek_pick_data(
                 player, gameweek=gameweek
             )
             futures.append(player_result_future)

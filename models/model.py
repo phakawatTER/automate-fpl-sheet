@@ -7,6 +7,7 @@ from .bootstrap import BootstrapElement
 class PlayerGameweekData:
     name: str = ""
     team_name: str = ""
+    subsitution_cost: int = 0
     player_id: int = 0
     points: float = 0
     reward_division: int = 1

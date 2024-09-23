@@ -204,7 +204,6 @@ class FPLAdapter:
             raise FPLError(
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
-
         data: dict = response.json()
         return models.FPLFantasyTeam(
             active_chip=data.get("active_chip"),
