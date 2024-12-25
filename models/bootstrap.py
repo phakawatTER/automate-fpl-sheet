@@ -152,7 +152,6 @@ class BootstrapElement:
     starts_per_90: int
     clean_sheets_per_90: int
     total_points: int
-    region: any = None
 
     # manually constructed fields
     position: Optional[PlayerPosition] = field(default=None)

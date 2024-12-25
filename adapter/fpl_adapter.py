@@ -1,3 +1,4 @@
+from dataclasses import fields
 from http import HTTPStatus
 from typing import List, Optional
 import httpx
@@ -52,9 +53,19 @@ class FPLAdapter:
                 f"unexpected http status code: {response.status_code} with response data: {response.content}"
             )
         data: dict = response.json()
+        bootstrap_elem_fields = [f.name for f in fields(models.BootstrapElement)]
+        elements: list[models.BootstrapElement] = []
+        for d in data.get("elements"):
+            new_data = {}
+            for k in d:
+                if k not in bootstrap_elem_fields:
+                    continue
+                new_data[k] = d[k]
+            elements.append(models.BootstrapElement(**new_data))
+
         bootstrap = models.Bootstrap(
             events=[models.BootstrapGameweek(**d) for d in data.get("events")],
-            elements=[models.BootstrapElement(**d) for d in data.get("elements")],
+            elements=elements,
             teams=[models.BootstrapTeam(**d) for d in data.get("teams")],
         )
         return bootstrap
@@ -119,17 +130,27 @@ class FPLAdapter:
             )
         data: dict = response.json()
         standings = data.get("standings")
-        return models.FPLClassicLeagueStandingData(
+        standing_result_fields = [
+            f.name for f in fields(models.FPLClassicLeagueStandingResult)
+        ]
+        standing_results: list[models.FPLClassicLeagueStandingResult] = []
+        for s in standings.get("results"):
+            d = {}
+            for k in s:
+                if k not in standing_result_fields:
+                    continue
+                d[k] = s[k]
+            standing_results.append(models.FPLClassicLeagueStandingResult(**d))
+
+        result = models.FPLClassicLeagueStandingData(
             league=models.FPLClassicLeagueInfo(**data.get("league")),
             standings=models.FPLClassicLeagueStandings(
                 has_next=standings.get("has_next"),
                 page=standings.get("page"),
-                results=[
-                    models.FPLClassicLeagueStandingResult(**d)
-                    for d in standings.get("results")
-                ],
+                results=standing_results,
             ),
         )
+        return result
 
     @util.time_track(description="FPLAdapter.get_h2h_results")
     async def get_h2h_results(self, gameweek: int, league_id: int):

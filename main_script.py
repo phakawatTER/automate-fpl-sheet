@@ -32,11 +32,11 @@ async def main():
     league_ids = app.firebase_repo.list_leagues_by_line_group_id(group_id=GROUP_ID)
     league_id = league_ids[0]
     event_status = await app.fpl_service.get_gameweek_event_status(gameweek=gameweek)
-    # players = await app.fpl_service.get_or_update_fpl_gameweek_table(
-    #     gameweek,
-    #     league_id=league_id,
-    #     ignore_cache=True,
-    # )
+    players = await app.fpl_service.get_or_update_fpl_gameweek_table(
+        gameweek,
+        league_id=league_id,
+        ignore_cache=True,
+    )
 
     # app.message_service.send_gameweek_result_message(
     #     gameweek=gameweek,
@@ -45,21 +45,21 @@ async def main():
     #     players=players,
     # )
 
-    # app.message_service.send_gameweek_result_message(
-    #     gameweek=gameweek,
-    #     players=players,
-    #     group_id=GROUP_ID,
-    #     event_status=None,
-    # )
-
-    player_picks = await app.fpl_service.list_player_gameweek_picks(
-        gameweek=gameweek, league_id=league_id
-    )
-    app.message_service.send_carousel_players_gameweek_picks(
+    app.message_service.send_gameweek_result_message(
         gameweek=gameweek,
-        player_gameweek_picks=player_picks,
+        players=players,
         group_id=GROUP_ID,
+        event_status=None,
     )
+
+    # player_picks = await app.fpl_service.list_player_gameweek_picks(
+    #     gameweek=gameweek, league_id=league_id
+    # )
+    # app.message_service.send_carousel_players_gameweek_picks(
+    #     gameweek=gameweek,
+    #     player_gameweek_picks=player_picks,
+    #     group_id=GROUP_ID,
+    # )
 
     # fixtures = await app.fpl_service.list_gameweek_fixtures(gameweek=gameweek)
     # app.message_service.send_gameweek_fixtures_message(
